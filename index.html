@@ -3816,10 +3816,19 @@ a { color: inherit; text-decoration: none; }
           <div class="tab-panel" id="tab-documentos">
             <div class="section-header">
               <div class="section-title">Documentos adjuntos</div>
-              <button class="btn-primary" onclick="showToast('Upload disponible próximamente', 'success')">
+              <button class="btn-primary" onclick="triggerDocUpload()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Subir documento
               </button>
+              <input type="file" id="doc-file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none" onchange="handleDocUpload(this)"/>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+              <select id="doc-category-sel" style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text)">
+                <option value="contrato">Contrato</option>
+                <option value="recibo">Recibo de sueldo</option>
+                <option value="personal">Documento personal</option>
+                <option value="otro" selected>Otro</option>
+              </select>
             </div>
             <div class="doc-list" id="doc-list"><!-- dynamic --></div>
           </div>
@@ -4685,6 +4694,7 @@ function switchTab(tabId, btn) {
   document.getElementById('tab-' + tabId).classList.add('active');
   if (btn) btn.classList.add('active');
   currentTab = tabId;
+  if (tabId === 'documentos' && currentEmployee) loadEmpDocuments(currentEmployee.id);
 }
 
 /* Tenure counter */
@@ -4835,7 +4845,14 @@ function renderLeaveTable(e) {
 /* Document list */
 function renderDocList(e) {
   const list = document.getElementById('doc-list');
-  list.innerHTML = e.documents.map(d => `
+  if (!list) return;
+  const docs = e.documents || [];
+  if (docs.length === 0) {
+    list.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--c-muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Sin documentos adjuntos</p></div>`;
+    return;
+  }
+  const catLabel = {contrato:'Contrato',recibo:'Recibo',personal:'Doc. personal',otro:'Otro'};
+  list.innerHTML = docs.map(d => `
     <div class="doc-item">
       <div class="doc-icon pdf">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -4845,18 +4862,73 @@ function renderDocList(e) {
       </div>
       <div class="doc-info">
         <div class="doc-name">${d.name}</div>
-        <div class="doc-meta">PDF · ${d.size} · ${fmtDate(d.date)}</div>
+        <div class="doc-meta">${catLabel[d.category]||d.category||'Doc'} · ${fmtDate(d.date||d.created_at)} · ${d.uploaded_by||''}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-doc-action" title="Descargar" onclick="showToast('Descargando ${d.name}...', 'success')">
+        ${d.url ? `<button class="btn-doc-action" title="Abrir" onclick="window.open('${d.url}','_blank')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
-        <button class="btn-doc-action" title="Eliminar" onclick="showToast('Requiere confirmación de HR Lead', 'error')">
+        </button>` : ''}
+        <button class="btn-doc-action" title="Eliminar" onclick="deleteDoc('${d.id}','${(e||currentEmployee).id}')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
         </button>
       </div>
     </div>
   `).join('');
+}
+
+function triggerDocUpload() {
+  document.getElementById('doc-file-input').click();
+}
+
+async function handleDocUpload(input) {
+  const file = input.files[0];
+  if (!file || !currentEmployee) return;
+  const emp = currentEmployee;
+  const category = document.getElementById('doc-category-sel')?.value || 'otro';
+  showToast('Subiendo documento...', '');
+  if (window.supabase) {
+    const path = `${emp.id}/${Date.now()}_${file.name}`;
+    const { error: upErr } = await window.supabase.storage.from('documents').upload(path, file, { upsert: true });
+    if (upErr) { showToast('Error al subir: ' + upErr.message, 'error'); return; }
+    const { data: urlData } = window.supabase.storage.from('documents').getPublicUrl(path);
+    const { error: dbErr } = await window.supabase.from('documents').insert({
+      emp_id: emp.id, name: file.name, category,
+      storage_path: path, public_url: urlData?.publicUrl || null,
+      uploaded_by: getCurrentUserName(),
+    });
+    if (dbErr) { showToast('Error al guardar: ' + dbErr.message, 'error'); return; }
+    await loadEmpDocuments(emp.id);
+    showToast('Documento subido correctamente', 'success');
+  } else {
+    if (!emp.documents) emp.documents = [];
+    emp.documents.unshift({ id: 'local_'+Date.now(), name: file.name, category, date: new Date().toISOString().split('T')[0], uploaded_by: getCurrentUserName() });
+    renderDocList(emp);
+    showToast('Documento guardado', 'success');
+  }
+  input.value = '';
+}
+
+async function loadEmpDocuments(empId) {
+  if (!window.supabase) return;
+  const { data, error } = await window.supabase.from('documents').select('*').eq('emp_id', empId).order('created_at', { ascending: false });
+  if (error) return;
+  const emp = DB.employees.find(e => e.id === empId);
+  if (!emp) return;
+  emp.documents = (data || []).map(d => ({ id: d.id, name: d.name, category: d.category, date: d.created_at?.split('T')[0], uploaded_by: d.uploaded_by, url: d.public_url }));
+  renderDocList(emp);
+}
+
+async function deleteDoc(docId, empId) {
+  if (!confirm('¿Eliminar este documento?')) return;
+  if (window.supabase) {
+    await window.supabase.from('documents').delete().eq('id', docId);
+    await loadEmpDocuments(empId);
+  } else {
+    const emp = DB.employees.find(e => e.id === empId);
+    if (emp?.documents) emp.documents = emp.documents.filter(d => d.id !== docId);
+    renderDocList(emp);
+  }
+  showToast('Documento eliminado', 'success');
 }
 
 /* ═══════════════════════════════════════════════════
@@ -5163,6 +5235,10 @@ async function submitLeaveRequest() {
   };
   emp.leave_requests.unshift(newReq);
 
+  if (window.supabase) {
+    await saveLeaveRequestToSupabase(newReq, emp.id);
+  }
+
   closeModalDirect();
   showToast(`Solicitud de ${currentLeaveType} enviada correctamente`, 'success');
 
@@ -5426,7 +5502,7 @@ function renderSolicitudes() {
   `).join('');
 }
 
-function approveRequest(empId, reqId, e) {
+async function approveRequest(empId, reqId, e) {
   e.stopPropagation();
   const emp = DB.employees.find(x => x.id === empId);
   if (!emp) return;
@@ -5434,23 +5510,31 @@ function approveRequest(empId, reqId, e) {
   if (!req) return;
   req.status = 'aprobado'; req.reviewer = getCurrentUserName();
   const key = {Vacaciones:'vacaciones',Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type]||'vacaciones';
-  const bal = emp.leave_balances[key];
+  const bal = emp.leave_balances?.[key];
   if (bal) { bal.used += req.days; bal.pending = Math.max(0, bal.pending - req.days); }
+  if (window.supabase) {
+    await window.supabase.from('leave_requests').update({ status: 'aprobado', reviewer: req.reviewer }).eq('id', reqId);
+  }
   showToast(`Licencia de ${emp.name} aprobada`, 'success');
   renderSolicitudes();
+  renderFeedSolicitudes();
 }
 
-function rejectRequest(empId, reqId, e) {
+async function rejectRequest(empId, reqId, e) {
   e.stopPropagation();
   const emp = DB.employees.find(x => x.id === empId);
   const req = emp && emp.leave_requests.find(r => r.id === reqId);
   if (!req) return;
   req.status = 'rechazado'; req.reviewer = getCurrentUserName();
   const key = {Vacaciones:'vacaciones',Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type]||'vacaciones';
-  const bal = emp.leave_balances[key];
+  const bal = emp.leave_balances?.[key];
   if (bal) bal.pending = Math.max(0, bal.pending - req.days);
-  showToast(`Solicitud rechazada`, 'error');
+  if (window.supabase) {
+    await window.supabase.from('leave_requests').update({ status: 'rechazado', reviewer: req.reviewer }).eq('id', reqId);
+  }
+  showToast('Solicitud rechazada', 'error');
   renderSolicitudes();
+  renderFeedSolicitudes();
 }
 
 function openPermisosModal() {
