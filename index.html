@@ -5609,15 +5609,7 @@ const LEAVE_TYPE_CSS = {
 function buildGanttEvents() {
   const events = [];
   DB.employees.forEach(emp => {
-    // Birthdays
-    if (emp.dob) {
-      const dob = new Date(emp.dob);
-      if (dob.getMonth() === ganttMonth) {
-        events.push({ emp_id: emp.id, type: 'bday', fullType: 'bday',
-          from_day: dob.getDate(), to_day: dob.getDate() });
-      }
-    }
-    // Leave requests
+    // Leave requests only — cumpleaños se muestra solo cuando hay solicitud de "Día de Cumpleaños"
     (emp.leave_requests || []).forEach(r => {
       const from = new Date(r.from);
       const to   = new Date(r.to);
