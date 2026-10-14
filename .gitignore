@@ -1,0 +1,42 @@
+# ─── Entorno y secretos ──────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+
+# ─── Dependencias ────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Build / output ──────────────────────────────────
+dist/
+build/
+.next/
+out/
+
+# ─── OS ──────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+
+# ─── Editores ────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# ─── Logs ────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Supabase local ──────────────────────────────────
+# Si usás supabase CLI localmente
+.supabase/
+supabase/.branches/
+supabase/.temp/
