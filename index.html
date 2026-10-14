@@ -2975,69 +2975,32 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ═══════════════════════════════════════════════════
-   TOOLTIP SYSTEM — [data-tip] attribute
+   TOOLTIP SYSTEM — [data-tip] attribute (JS-driven, position:fixed)
    Usage: <span data-tip="texto del tooltip">...</span>
-   Add data-tip-left, data-tip-top, data-tip-right for position
+   Tooltip is rendered via JS into document.body so it never clips.
 ═══════════════════════════════════════════════════ */
-[data-tip] {
-  position: relative;
-  cursor: default;
-}
-[data-tip]::before {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 7px);
-  left: 50%;
-  transform: translateX(-50%);
+[data-tip] { cursor: default; }
+/* JS-driven tooltip element */
+.pcx-tooltip {
+  position: fixed;
   background: #1a1f2e;
   color: #f0f4ff;
   font-size: 11.5px;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-line;
-  max-width: 240px;
-  width: max-content;
-  padding: 7px 11px;
-  border-radius: 7px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.22);
+  max-width: 260px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.28);
   pointer-events: none;
-  opacity: 0;
-  transition: opacity .15s, transform .15s;
-  z-index: 9999;
+  z-index: 99999;
   text-align: left;
   letter-spacing: 0;
-}
-[data-tip]::after {
-  content: '';
-  position: absolute;
-  bottom: calc(100% + 1px);
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: #1a1f2e;
-  pointer-events: none;
   opacity: 0;
-  transition: opacity .15s;
-  z-index: 9999;
+  transition: opacity .12s;
 }
-[data-tip]:hover::before,
-[data-tip]:hover::after { opacity: 1; }
-/* Left-anchored tooltip */
-[data-tip-pos="left"]::before { left: 0; transform: none; }
-[data-tip-pos="left"]::after  { left: 16px; transform: none; }
-/* Right-anchored tooltip */
-[data-tip-pos="right"]::before { left: auto; right: 0; transform: none; }
-[data-tip-pos="right"]::after  { left: auto; right: 16px; transform: none; }
-/* Bottom tooltip */
-[data-tip-pos="bottom"]::before {
-  bottom: auto; top: calc(100% + 7px);
-  transform: translateX(-50%);
-}
-[data-tip-pos="bottom"]::after {
-  bottom: auto; top: calc(100% + 1px);
-  border-top-color: transparent; border-bottom-color: #1a1f2e;
-  transform: translateX(-50%);
-}
+.pcx-tooltip.visible { opacity: 1; }
 /* Tooltip helper header class */
 .th-tip {
   display: inline-flex; align-items: center; gap: 4px;
@@ -8554,6 +8517,55 @@ function renderPolicyTable() {
   document.querySelectorAll('.policy-tier').forEach(t => t.classList.remove('active-tier'));
 }
 
+
+// ── SMART TOOLTIP ENGINE ────────────────────────────────────────────
+// Uses position:fixed + viewport clamping so tooltips never clip.
+(function () {
+  let el = null;
+
+  function show(target) {
+    const text = target.getAttribute('data-tip');
+    if (!text) return;
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'pcx-tooltip';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.remove('visible');
+
+    const r = target.getBoundingClientRect();
+    // Reset position to measure natural size
+    el.style.left = '0px';
+    el.style.top  = '0px';
+    const tw = el.offsetWidth;
+    const th = el.offsetHeight;
+    const gap = 8;
+
+    let left = r.left + r.width / 2 - tw / 2;
+    let top  = r.top - th - gap;
+
+    // Clamp horizontally
+    left = Math.max(gap, Math.min(left, window.innerWidth - tw - gap));
+    // Flip below if not enough room above
+    if (top < gap) top = r.bottom + gap;
+
+    el.style.left = left + 'px';
+    el.style.top  = top  + 'px';
+    requestAnimationFrame(() => el && el.classList.add('visible'));
+  }
+
+  function hide() {
+    if (el) { el.classList.remove('visible'); }
+  }
+
+  document.addEventListener('mouseover', function (e) {
+    const t = e.target.closest('[data-tip]');
+    if (t) show(t); else hide();
+  });
+  document.addEventListener('scroll', hide, true);
+  document.addEventListener('click',  hide, true);
+})();
 </script>
 <!-- ─── LEAVE DETAIL PANEL ─────────────────────────── -->
 <div class="leave-detail-overlay" id="ldp-overlay">
