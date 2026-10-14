@@ -4314,12 +4314,24 @@ a { color: inherit; text-decoration: none; }
 
     <!-- LICENCIAS -->
     <div class="rep-panel" id="rp-licencias">
+      <!-- Filtro de año -->
+      <div id="lic-year-filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px"></div>
       <div class="rep-kpis" id="rep-kpis-licencias"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Solicitudes por tipo de licencia</div>
-          <div class="rep-chart-sub">Vacaciones · Enfermedad · Extra Day · Mat./Pat.</div>
+          <div class="rep-chart-title">Tipo de licencia más usado</div>
+          <div class="rep-chart-sub">Solicitudes por tipo · año seleccionado</div>
           <div id="chart-lic-tipos"></div>
+        </div>
+        <div class="rep-chart-card">
+          <div class="rep-chart-title">Estacionalidad — picos por mes</div>
+          <div class="rep-chart-sub">¿En qué meses se piden más licencias?</div>
+          <svg class="chart-svg" id="chart-lic-mes-bar" height="180"></svg>
+        </div>
+        <div class="rep-chart-card">
+          <div class="rep-chart-title">Solicitudes por año</div>
+          <div class="rep-chart-sub">Tendencia histórica de licencias pedidas</div>
+          <svg class="chart-svg" id="chart-lic-anio" height="180"></svg>
         </div>
         <div class="rep-chart-card">
           <div class="rep-chart-title">Estado de solicitudes</div>
@@ -4327,8 +4339,8 @@ a { color: inherit; text-decoration: none; }
           <div class="donut-wrap" id="chart-lic-status"></div>
         </div>
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Top colaboradores por días de licencia usados</div>
-          <div class="rep-chart-sub">Suma de días aprobados en 2026</div>
+          <div class="rep-chart-title">Top colaboradores por días tomados</div>
+          <div class="rep-chart-sub">Suma de días de licencia aprobados · año seleccionado</div>
           <div id="chart-lic-top"></div>
         </div>
       </div>
@@ -7147,41 +7159,105 @@ function renderHeadcount() {
 }
 
 /* ── LICENCIAS ── */
+window._licYear = 'all';
+
+function filterLicencias(year, btnEl) {
+  window._licYear = year;
+  document.querySelectorAll('#lic-year-filter .filter-chip').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  renderLicenciasRepCharts();
+}
+
 function renderLicenciasRep() {
-  const allReqs = DB.employees.flatMap(e => (e.leave_requests||[]).map(r=>({...r,emp:e})));
-  const approved = allReqs.filter(r=>r.status==='aprobado');
-  const pending  = allReqs.filter(r=>r.status==='pendiente');
+  const allReqsRaw = DB.employees.flatMap(e => (e.leave_requests||[]).map(r=>({...r,emp:e})));
+
+  // Build year filter buttons
+  const years = [...new Set(allReqsRaw.map(r=>(r.from||'').split('-')[0]).filter(Boolean))].sort();
+  const filterEl = document.getElementById('lic-year-filter');
+  if (filterEl) {
+    filterEl.innerHTML = `<button class="filter-chip${window._licYear==='all'?' active':''}" onclick="filterLicencias('all',this)">Todos los años</button>`
+      + years.map(y => `<button class="filter-chip${window._licYear===y?' active':''}" onclick="filterLicencias('${y}',this)">${y}</button>`).join('');
+  }
+
+  renderLicenciasRepCharts();
+}
+
+function renderLicenciasRepCharts() {
+  const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const typeColors = {
+    'Vacaciones':'#1565c0','Enfermedad':'#c62828','Extra Day':'#e65100',
+    'Maternidad/Paternidad':'#880e4f','Día de Cumpleaños':'#f9a825','Mudanza':'#bf360c',
+    'Final Days':'#1a237e','Licencia Especial':'#4527a0','Paternidad':'#880e4f'
+  };
+
+  const allReqsRaw = DB.employees.flatMap(e => (e.leave_requests||[]).map(r=>({...r,emp:e})));
+
+  // Filter by selected year
+  const reqs = window._licYear === 'all'
+    ? allReqsRaw
+    : allReqsRaw.filter(r => (r.from||'').startsWith(window._licYear));
+
+  const approved = reqs.filter(r=>r.status==='aprobado');
+  const pending  = reqs.filter(r=>r.status==='pendiente');
   const totalDays = approved.reduce((s,r)=>s+(r.days||0),0);
+  const yearLabel = window._licYear === 'all' ? 'histórico' : window._licYear;
 
   document.getElementById('rep-kpis-licencias').innerHTML = [
-    { icon:'📋', num: allReqs.length,    label: 'Solicitudes totales' },
-    { icon:'✅', num: approved.length,   label: 'Aprobadas' },
-    { icon:'⏳', num: pending.length,    label: 'Pendientes' },
-    { icon:'📅', num: totalDays,         label: 'Días tomados' },
+    { icon:'📋', num: reqs.length,      label: `Solicitudes (${yearLabel})` },
+    { icon:'✅', num: approved.length,  label: 'Aprobadas' },
+    { icon:'⏳', num: pending.length,   label: 'Pendientes' },
+    { icon:'📅', num: totalDays,        label: 'Días tomados' },
   ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
-  // Por tipo
+  // Por tipo — horizontal bars
   const typeCount = {};
-  allReqs.forEach(r => typeCount[r.type||'Otro'] = (typeCount[r.type||'Otro']||0)+1);
-  const typeColors = { 'Vacaciones':'#4caf50','Enfermedad':'#e57373','Extra Day':'#9c27b0','Maternidad/Paternidad':'#f48fb1' };
-  makeHBars('chart-lic-tipos', Object.entries(typeCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:v,color:typeColors[k]||'#888'})));
+  reqs.forEach(r => typeCount[r.type||'Otro'] = (typeCount[r.type||'Otro']||0)+1);
+  makeHBars('chart-lic-tipos',
+    Object.entries(typeCount).sort((a,b)=>b[1]-a[1])
+      .map(([k,v])=>({label:k, value:v, color:typeColors[k]||'#888',
+        emps: reqs.filter(r=>(r.type||'Otro')===k).map(r=>r.emp).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i)
+      })),
+    null, 'onChartSegClick'
+  );
+
+  // Estacionalidad por mes — bar chart
+  const byMonth = Array(12).fill(0);
+  reqs.forEach(r => {
+    const m = parseInt((r.from||'').split('-')[1]) - 1;
+    if (m >= 0 && m < 12) byMonth[m]++;
+  });
+  const mesData = MONTHS_ES.map((l,i) => ({
+    label: l, value: byMonth[i],
+    emps: reqs.filter(r => parseInt((r.from||'').split('-')[1])-1 === i).map(r=>r.emp).filter((e,i2,a)=>a.findIndex(x=>x.id===e.id)===i2)
+  }));
+  makeBarChart('chart-lic-mes-bar', mesData, '#5c6bc0', 'onChartSegClick');
+
+  // Por año — tendencia histórica (siempre muestra todos los años)
+  const allReqs = DB.employees.flatMap(e => (e.leave_requests||[]).map(r=>({...r,emp:e})));
+  const anioYears = [...new Set(allReqs.map(r=>(r.from||'').split('-')[0]).filter(Boolean))].sort();
+  const anioData = anioYears.map(y => ({
+    label: y,
+    value: allReqs.filter(r=>(r.from||'').startsWith(y)).length,
+    emps: allReqs.filter(r=>(r.from||'').startsWith(y)).map(r=>r.emp).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i)
+  }));
+  makeBarChart('chart-lic-anio', anioData, '#26a69a', 'onChartSegClick');
 
   // Status donut
   const stData = [
-    {label:'Aprobadas', value:approved.length, color:'#4caf50'},
-    {label:'Pendientes', value:pending.length, color:'#ffd54f'},
-    {label:'Rechazadas', value:allReqs.filter(r=>r.status==='rechazado').length, color:'#e57373'},
+    {label:'Aprobadas',  value:approved.length,                               color:'#4caf50'},
+    {label:'Pendientes', value:pending.length,                                 color:'#ffd54f'},
+    {label:'Rechazadas', value:reqs.filter(r=>r.status==='rechazado').length, color:'#e57373'},
   ].filter(d=>d.value>0);
-  makeDonut('chart-lic-status', stData);
+  makeDonut('chart-lic-status', stData, 140, 'onChartSegClick');
 
-  // Top usuarios por días
+  // Top colaboradores por días aprobados
   const empDays = {};
   approved.forEach(r => {
-    if (!empDays[r.emp.id]) empDays[r.emp.id] = {label:r.emp.name.split(' ').slice(0,2).join(' '),value:0,color:r.emp.color};
+    if (!empDays[r.emp.id]) empDays[r.emp.id] = {label:r.emp.name.split(' ').slice(0,2).join(' '), value:0, color:r.emp.color, emps:[r.emp]};
     empDays[r.emp.id].value += (r.days||0);
   });
   const topData = Object.values(empDays).sort((a,b)=>b.value-a.value).slice(0,10);
-  makeHBars('chart-lic-top', topData);
+  makeHBars('chart-lic-top', topData, null, 'onChartSegClick');
 }
 
 /* ── ESTRUCTURA ── */
