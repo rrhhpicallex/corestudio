@@ -3224,7 +3224,7 @@ a { color: inherit; text-decoration: none; }
                 <span style="color:var(--c-accent);font-style:italic" id="greeting-name">Georgina.</span>
               </div>
               <div style="font-size:13px;color:var(--c-muted);margin-top:4px">
-                Tenés <strong id="inicio-pending-count" style="color:var(--c-accent)">3 solicitudes pendientes</strong> ·
+                Tenés <strong id="inicio-pending-count" style="color:var(--c-accent);cursor:pointer;text-decoration:underline" onclick="switchView('solicitudes', document.querySelector('[data-view=solicitudes]'))">3 solicitudes pendientes</strong> ·
                 Preguntale a <span style="font-weight:700;color:var(--c-accent-hover);cursor:pointer" onclick="openHumanIA()">HumanIA</span> lo que necesités.
               </div>
             </div>
@@ -3400,8 +3400,8 @@ a { color: inherit; text-decoration: none; }
             <div class="modal-field">
               <div class="modal-label">Opciones</div>
               <div style="display:flex;gap:20px;margin-top:8px;flex-wrap:wrap">
-                <label class="nov-checkbox-row"><input type="checkbox" id="nov-opt-comments" checked/> Activar comentarios</label>
-                <label class="nov-checkbox-row"><input type="checkbox" id="nov-opt-reactions" checked/> Activar reacciones</label>
+                <label class="nov-checkbox-row" style="opacity:.5;cursor:default" title="Próximamente"><input type="checkbox" id="nov-opt-gmail" disabled/> Enviar por Gmail</label>
+                <label class="nov-checkbox-row" style="opacity:.5;cursor:default" title="Próximamente"><input type="checkbox" id="nov-opt-slack" disabled/> Enviar por Slack</label>
                 <label class="nov-checkbox-row"><input type="checkbox" id="nov-opt-schedule"/> Programar</label>
               </div>
               <div id="nov-schedule-wrap" style="display:none;margin-top:10px">
@@ -4636,9 +4636,9 @@ function openProfile(empId) {
   document.getElementById('fi-address').textContent = e.address;
   document.getElementById('fi-health').textContent = e.health_insurance;
   document.getElementById('fi-email').textContent = e.email;
-  document.getElementById('fi-ec-name').textContent = e.emergency.name;
-  document.getElementById('fi-ec-rel').textContent = e.emergency.rel;
-  document.getElementById('fi-ec-phone').textContent = e.emergency.phone;
+  document.getElementById('fi-ec-name').textContent = e.emergency?.name || '';
+  document.getElementById('fi-ec-rel').textContent = e.emergency?.rel || '';
+  document.getElementById('fi-ec-phone').textContent = e.emergency?.phone || '';
 
   // puesto tab
   renderJobTimeline(e);
@@ -4668,6 +4668,7 @@ function openProfile(empId) {
       'fi-health': _e.health_insurance||'', 'fi-email': _e.email||'',
       'fi-ec-name': _e.emergency?.name||'', 'fi-ec-rel': _e.emergency?.rel||'',
       'fi-ec-phone': _e.emergency?.phone||'',
+
       'pj-manager': _e.manager_name||'', 'pj-level': _e.level||'',
       'pj-type': _e.type||'', 'pj-start': fmtDate(_e.hire_date),
     };
@@ -4719,7 +4720,8 @@ function startTenureCounter(hireDate) {
 /* Job timeline */
 function renderJobTimeline(e) {
   const tl = document.getElementById('job-timeline');
-  tl.innerHTML = e.job_history.map((j, i) => `
+  const history = e.job_history?.length ? e.job_history : [{role: e.title||'—', dept: e.dept||'—', from: e.hire_date, to: null}];
+  tl.innerHTML = history.map((j, i) => `
     <div class="timeline-item ${j.to ? 'past' : ''}">
       <div class="timeline-dot"></div>
       <div class="timeline-role">${j.role}</div>
@@ -4754,7 +4756,7 @@ function renderReports(e) {
 
 /* Leave tiles */
 function renderLeaveTiles(e) {
-  const b = e.leave_balances;
+  const b = e.leave_balances || {};
   const tiles = [
     { key: 'vacaciones', label: 'Vacaciones', icon: '🏖️', color: '#1565c0', bg: '#e3f2fd' },
     { key: 'enfermedad', label: 'Enfermedad', icon: '🤒', color: '#c62828', bg: '#fce4ec' },
@@ -5208,7 +5210,7 @@ async function submitLeaveRequest() {
   const emp = currentEmployee || DB.employees[0];
   const keyMap = { 'Vacaciones': 'vacaciones', 'Enfermedad': 'enfermedad', 'Extra Day': 'extra_day', 'Maternidad/Paternidad': 'maternidad' };
   const key = keyMap[currentLeaveType] || 'vacaciones';
-  emp.leave_balances[key].pending += (currentLeaveType === 'Extra Day' ? 1 : 1);
+  if (emp.leave_balances?.[key]) emp.leave_balances[key].pending += 1;
 
   const to = document.getElementById('modal-to')?.value || from;
   const days = Math.max(1, Math.round((new Date(to) - new Date(from)) / 86400000) + 1);
