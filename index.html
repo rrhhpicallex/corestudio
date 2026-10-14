@@ -5765,6 +5765,7 @@ function openLDP(dataStr) {
   const emp = DB.employees.find(e => e.id === evData.emp_id);
   if (!emp) return;
   window._ldpEmpId = emp.id;
+  window._ldpReqId = null;
 
   // Find matching leave request — first by req_id (exact), then by type+month
   let req = null;
@@ -5902,11 +5903,41 @@ function openLDP(dataStr) {
     }).join('');
   }
 
+  // Store req id for approve/reject from LDP
+  if (req) window._ldpReqId = req.id;
+
+  // Show approve/reject buttons for admin users on pending requests
+  const actionRow = document.getElementById('ldp-action-row');
+  if (actionRow) {
+    const isAdmin = (window._currentUser?.role === 'admin');
+    const isPending = req && req.status === 'pendiente';
+    actionRow.style.display = (isAdmin && isPending) ? 'flex' : 'none';
+  }
+
   document.getElementById('ldp-overlay').classList.add('open');
 }
 
 function closeLDP() {
   document.getElementById('ldp-overlay').classList.remove('open');
+}
+
+async function ldpApprove(e) {
+  if (!window._ldpEmpId || !window._ldpReqId) return;
+  await approveRequest(window._ldpEmpId, window._ldpReqId, e);
+  // Refresh approver display and hide action buttons
+  const actionRow = document.getElementById('ldp-action-row');
+  if (actionRow) actionRow.style.display = 'none';
+  const statusEl = document.getElementById('ldp-status-val');
+  if (statusEl) { statusEl.textContent = 'Aprobado'; statusEl.style.color = 'var(--c-accent)'; }
+}
+
+async function ldpReject(e) {
+  if (!window._ldpEmpId || !window._ldpReqId) return;
+  await rejectRequest(window._ldpEmpId, window._ldpReqId, e);
+  const actionRow = document.getElementById('ldp-action-row');
+  if (actionRow) actionRow.style.display = 'none';
+  const statusEl = document.getElementById('ldp-status-val');
+  if (statusEl) { statusEl.textContent = 'Rechazado'; statusEl.style.color = 'var(--c-danger)'; }
 }
 
 function renderMiniCal(fromStr, toStr, bgColor, textColor, returnDate) {
@@ -6881,8 +6912,15 @@ const DEPT_COLORS = {
   'Artes':'#6b7a2d','Finanzas':'#2d7a6b','Comercial':'#7a2d5c','Legales':'#5c2d7a'
 };
 
-function makeBarChart(svgId, data, color) {
-  // data: [{label, value}]
+function normalizeDept(d) {
+  if (!d) return d;
+  if (['BackEnd','Backend','FrontEnd','Frontend','backEnd','frontEnd'].includes(d)) return 'Desarrollo';
+  if (['Comercial','Finanzas'].includes(d)) return 'CX';
+  return d;
+}
+
+function makeBarChart(svgId, data, color, clickFn) {
+  // data: [{label, value, emps?}]
   const svg = document.getElementById(svgId);
   if (!svg) return;
   const W = svg.parentElement.offsetWidth || svg.parentElement.clientWidth || 480;
@@ -6903,12 +6941,17 @@ function makeBarChart(svgId, data, color) {
     out += `<text class="chart-label" x="${pad.left-4}" y="${y+3}" text-anchor="end">${Math.round(max*i/4)}</text>`;
   }
 
+  // Store segment data for click handler
+  window._chartData = window._chartData || {};
+  window._chartData[svgId] = data;
+
   data.forEach((d, i) => {
     const bh = Math.max(2, (d.value / max) * cH);
     const x  = pad.left + i * (cW / data.length) + (cW / data.length - bw) / 2;
     const y  = pad.top  + cH - bh;
     const c  = Array.isArray(color) ? (color[i] || CHART_COLORS[i % CHART_COLORS.length]) : (color || CHART_COLORS[i % CHART_COLORS.length]);
-    out += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${c}"/>`;
+    const clickAttr = clickFn ? ` onclick="${clickFn}('${svgId}',${i})" style="cursor:pointer"` : '';
+    out += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${c}"${clickAttr}><title>${d.label}: ${d.value}</title></rect>`;
     if (d.value > 0) out += `<text class="chart-value" x="${(x+bw/2).toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle">${d.value}</text>`;
     // Truncate label
     const lbl = d.label.length > 5 ? d.label.slice(0,5) : d.label;
@@ -6917,14 +6960,17 @@ function makeBarChart(svgId, data, color) {
   svg.innerHTML = out;
 }
 
-function makeHBars(containerId, data, maxVal) {
+function makeHBars(containerId, data, maxVal, clickFn) {
   const el = document.getElementById(containerId);
   if (!el) return;
   const max = maxVal || Math.max(...data.map(d=>d.value), 1);
+  window._chartData = window._chartData || {};
+  window._chartData[containerId] = data;
   el.innerHTML = data.map((d,i) => {
     const pct = Math.max(2, Math.round((d.value/max)*100));
     const c = d.color || CHART_COLORS[i % CHART_COLORS.length];
-    return `<div class="hbar-row">
+    const clickAttr = clickFn ? ` onclick="${clickFn}('${containerId}',${i})" style="cursor:pointer"` : '';
+    return `<div class="hbar-row"${clickAttr} title="${d.label}: ${d.value}">
       <div class="hbar-label" title="${d.label}">${d.label}</div>
       <div class="hbar-track">
         <div class="hbar-fill" style="width:${pct}%;background:${c}">
@@ -6936,13 +6982,15 @@ function makeHBars(containerId, data, maxVal) {
   }).join('');
 }
 
-function makeDonut(containerId, data, size=140) {
+function makeDonut(containerId, data, size=140, clickFn) {
   const el = document.getElementById(containerId);
   if (!el) return;
   const total = data.reduce((s,d)=>s+d.value,0)||1;
   const cx=size/2, cy=size/2, r=size*0.38, innerR=size*0.22;
   let angle = -Math.PI/2;
   let slices = '';
+  window._chartData = window._chartData || {};
+  window._chartData[containerId] = data;
   data.forEach((d,i) => {
     const slice = (d.value/total)*Math.PI*2;
     const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
@@ -6952,12 +7000,15 @@ function makeDonut(containerId, data, size=140) {
     const ix1=cx+innerR*Math.cos(angle-slice), iy1=cy+innerR*Math.sin(angle-slice);
     const ix2=cx+innerR*Math.cos(angle),       iy2=cy+innerR*Math.sin(angle);
     const c = d.color || CHART_COLORS[i%CHART_COLORS.length];
-    slices += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${large},1,${x2.toFixed(1)},${y2.toFixed(1)} L${ix2.toFixed(1)},${iy2.toFixed(1)} A${innerR},${innerR},0,${large},0,${ix1.toFixed(1)},${iy1.toFixed(1)} Z" fill="${c}" opacity=".9"/>`;
+    const pct = Math.round(d.value/total*100);
+    const clickAttr = clickFn ? ` onclick="${clickFn}('${containerId}',${i})" style="cursor:pointer"` : '';
+    slices += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${large},1,${x2.toFixed(1)},${y2.toFixed(1)} L${ix2.toFixed(1)},${iy2.toFixed(1)} A${innerR},${innerR},0,${large},0,${ix1.toFixed(1)},${iy1.toFixed(1)} Z" fill="${c}" opacity=".9"${clickAttr}><title>${d.label}: ${d.value} (${pct}%)</title></path>`;
   });
   const legend = data.map((d,i) => {
     const c = d.color || CHART_COLORS[i%CHART_COLORS.length];
     const pct = Math.round(d.value/total*100);
-    return `<div class="donut-legend-item">
+    const clickAttr = clickFn ? ` onclick="${clickFn}('${containerId}',${i})" style="cursor:pointer"` : '';
+    return `<div class="donut-legend-item"${clickAttr}>
       <div class="donut-dot" style="background:${c}"></div>
       <span>${d.label}</span>
       <span class="donut-legend-num">${d.value}</span>
@@ -6973,6 +7024,47 @@ function makeDonut(containerId, data, size=140) {
   <div class="donut-legend">${legend}</div>`;
 }
 
+/* ── CHART SEGMENT CLICK → show people ── */
+function onChartSegClick(chartId, segIdx) {
+  const data = window._chartData && window._chartData[chartId];
+  if (!data || !data[segIdx]) return;
+  const seg = data[segIdx];
+  const emps = seg.emps || [];
+  if (!emps.length) return;
+  showSegmentPeopleModal(seg.label, emps);
+}
+
+function showSegmentPeopleModal(label, emps) {
+  // Remove existing modal if any
+  const old = document.getElementById('seg-people-modal');
+  if (old) old.remove();
+
+  const rows = emps.map(e => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--c-border-light)">
+    <div style="width:32px;height:32px;border-radius:8px;background:${e.color||'#888'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${e.initials||'?'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:13px">${e.name}</div>
+      <div style="font-size:11px;color:var(--c-muted)">${e.title||''}</div>
+    </div>
+    <span class="list-dept-chip" style="font-size:10px">${normalizeDept(e.dept)||''}</span>
+  </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'seg-people-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
+  modal.innerHTML = `<div style="background:var(--c-surface);border-radius:18px;padding:24px;width:360px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-weight:700;font-size:16px">${label}</div>
+        <div style="font-size:12px;color:var(--c-muted)">${emps.length} persona${emps.length!==1?'s':''}</div>
+      </div>
+      <button onclick="document.getElementById('seg-people-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--c-muted);line-height:1">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1">${rows}</div>
+  </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
 /* ── HEADCOUNT ── */
 function renderHeadcount() {
   const active = DB.employees.filter(e => e.status !== 'inactivo');
@@ -6986,7 +7078,7 @@ function renderHeadcount() {
     { icon:'👥', num: active.length,                   label: 'Activos totales' },
     { icon:'🚀', num: newThisYear,                      label: `Ingresos ${thisYear}` },
     { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países' },
-    { icon:'📐', num: [...new Set(active.map(e=>e.dept))].length,    label: 'Áreas' },
+    { icon:'📐', num: [...new Set(active.map(e=>normalizeDept(e.dept)))].length,    label: 'Áreas' },
     { icon:'⏱️', num: avgTenure + ' años',              label: 'Antigüedad promedio' },
   ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
@@ -7011,29 +7103,33 @@ function renderHeadcount() {
   const svg = document.getElementById('chart-ingresos');
   if (svg) {
     const W = (svg.parentElement?.offsetWidth || svg.parentElement?.clientWidth || 480);
-    const data = MONTHS.map((l,i) => ({ label:l, value: countByMonth[i] + prevCounts[i] }));
-    makeBarChart('chart-ingresos', data, CHART_COLORS[0]);
+    const data = MONTHS.map((l,i) => ({
+      label: l,
+      value: countByMonth[i] + prevCounts[i],
+      emps: active.filter(e => e.hire_date && (parseInt(e.hire_date.split('-')[1])-1) === i)
+    }));
+    makeBarChart('chart-ingresos', data, CHART_COLORS[0], 'onChartSegClick');
   }
 
   // Horizontal bars by dept
   const deptCount = {};
-  active.forEach(e => deptCount[e.dept] = (deptCount[e.dept]||0)+1);
-  const deptData = Object.entries(deptCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:v,color:DEPT_COLORS[k]||'#4caf50'}));
-  makeHBars('chart-areas', deptData);
+  active.forEach(e => { const d = normalizeDept(e.dept); deptCount[d] = (deptCount[d]||0)+1; });
+  const deptData = Object.entries(deptCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:v,color:DEPT_COLORS[k]||'#4caf50',emps:active.filter(e=>normalizeDept(e.dept)===k)}));
+  makeHBars('chart-areas', deptData, null, 'onChartSegClick');
 
   // Donut niveles
   const levelCount = {};
   active.forEach(e => levelCount[e.level||'Sin nivel'] = (levelCount[e.level||'Sin nivel']||0)+1);
   const levelColors = { 'Junior':'#a5d6a7','Semi Senior':'#4caf50','Senior':'#1b5e20','Sin nivel':'#ccc' };
-  const levelData = Object.entries(levelCount).map(([k,v])=>({label:k,value:v,color:levelColors[k]}));
-  makeDonut('chart-niveles', levelData);
+  const levelData = Object.entries(levelCount).map(([k,v])=>({label:k,value:v,color:levelColors[k],emps:active.filter(e=>(e.level||'Sin nivel')===k)}));
+  makeDonut('chart-niveles', levelData, 140, 'onChartSegClick');
 
   // Donut modalidad
   const modeCount = {};
   active.forEach(e => modeCount[e.type||'Full-time'] = (modeCount[e.type||'Full-time']||0)+1);
   const modeColors = { 'Full-time':'#2e7d32','Part-time':'#81c784','Consultor a Demanda':'#a5d6a7' };
-  const modeData = Object.entries(modeCount).map(([k,v])=>({label:k,value:v,color:modeColors[k]}));
-  makeDonut('chart-modalidad', modeData);
+  const modeData = Object.entries(modeCount).map(([k,v])=>({label:k,value:v,color:modeColors[k],emps:active.filter(e=>(e.type||'Full-time')===k)}));
+  makeDonut('chart-modalidad', modeData, 140, 'onChartSegClick');
 
   // Últimos ingresos
   const repRecent = document.getElementById('rep-recent-hires');
@@ -7118,39 +7214,58 @@ function renderEstructura() {
   const pc = {};
   active.forEach(e=>pc[e.country||'Argentina']=(pc[e.country||'Argentina']||0)+1);
   const pColors = {'Argentina':'#4caf50','Colombia':'#ffd54f','Estados Unidos':'#42a5f5'};
-  makeDonut('chart-paises', Object.entries(pc).map(([k,v])=>({label:k,value:v,color:pColors[k]||'#888'})));
+  makeDonut('chart-paises', Object.entries(pc).map(([k,v])=>({label:k,value:v,color:pColors[k]||'#888',emps:active.filter(e=>(e.country||'Argentina')===k)})), 140, 'onChartSegClick');
 
   // Antigüedad promedio por área
   const deptTenure = {};
   const deptCount2 = {};
   active.forEach(e=>{
-    if (!deptTenure[e.dept]) {deptTenure[e.dept]=0;deptCount2[e.dept]=0;}
-    deptTenure[e.dept]+=calcAge(e.hire_date);
-    deptCount2[e.dept]++;
+    const nd = normalizeDept(e.dept);
+    if (!deptTenure[nd]) {deptTenure[nd]=0;deptCount2[nd]=0;}
+    deptTenure[nd]+=calcAge(e.hire_date);
+    deptCount2[nd]++;
   });
   const antData = Object.entries(deptTenure).map(([k,v])=>({
-    label:k, value:parseFloat((v/deptCount2[k]).toFixed(1)), color:DEPT_COLORS[k]||'#4caf50'
+    label:k, value:parseFloat((v/deptCount2[k]).toFixed(1)), color:DEPT_COLORS[k]||'#4caf50', emps:active.filter(e=>normalizeDept(e.dept)===k)
   })).sort((a,b)=>b.value-a.value);
-  makeHBars('chart-antiguedad', antData, Math.max(...antData.map(d=>d.value)));
+  makeHBars('chart-antiguedad', antData, Math.max(...antData.map(d=>d.value)), 'onChartSegClick');
 
   // Top 10 antigüedad individual
   const topAnt = [...active].sort((a,b)=>calcAge(b.hire_date)-calcAge(a.hire_date)).slice(0,10).map(e=>({
     label: e.name.split(' ').slice(0,2).join(' '),
     value: parseFloat(calcAge(e.hire_date).toFixed(1)),
-    color: e.color
+    color: e.color,
+    emps: [e]
   }));
-  makeHBars('chart-top-antiguedad', topAnt);
+  makeHBars('chart-top-antiguedad', topAnt, null, 'onChartSegClick');
 }
 
 /* ── BAJAS ── */
 function renderBajasRep() {
-  const bajas = DB.bajas || [];
-  const active = DB.employees.filter(e=>e.status!=='inactivo').length;
+  // Merge DB.bajas (manual entries) with inactivo employees from DB.employees
+  const bajasManual = DB.bajas || [];
+  const bajasManualIds = new Set(bajasManual.map(b => b.emp_id || b.id));
+  const inactivoEmps = DB.employees.filter(e => e.status === 'inactivo' && !bajasManualIds.has(e.id));
+  const inactivoBajas = inactivoEmps.map(e => ({
+    emp_id:   e.id,
+    name:     e.name,
+    initials: e.initials || e.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
+    color:    e.color || '#888',
+    title:    e.title || '—',
+    dept:     normalizeDept(e.dept) || '—',
+    hire_date: e.hire_date || '',
+    baja_date: e.end_date || e.termination_date || '',
+    motivo:   e.termination_reason || e.status_reason || 'Egreso',
+    baja_by:  '—',
+  }));
+  const bajas = [...bajasManual, ...inactivoBajas].sort((a,b) => (b.baja_date||'').localeCompare(a.baja_date||''));
+
+  const activeCount = DB.employees.filter(e=>e.status!=='inactivo').length;
 
   document.getElementById('rep-kpis-bajas').innerHTML = [
-    { icon:'📉', num: bajas.length,  label: 'Total bajas registradas' },
-    { icon:'👥', num: active,        label: 'Colaboradores activos' },
-    { icon:'📊', num: bajas.length > 0 ? (bajas.length/(bajas.length+active)*100).toFixed(1)+'%' : '0%', label: 'Tasa de rotación' },
+    { icon:'📉', num: bajas.length,     label: 'Total bajas registradas' },
+    { icon:'👥', num: activeCount,       label: 'Colaboradores activos' },
+    { icon:'📊', num: bajas.length > 0 ? (bajas.length/(bajas.length+activeCount)*100).toFixed(1)+'%' : '0%', label: 'Tasa de rotación' },
   ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
   const wrap = document.getElementById('bajas-table-wrap');
@@ -7167,8 +7282,8 @@ function renderBajasRep() {
         <div><div style="font-weight:600;font-size:13px">${b.name}</div><div style="font-size:11px;color:var(--c-muted)">${b.title}</div></div>
       </div></td>
       <td><span class="list-dept-chip">${b.dept}</span></td>
-      <td class="text-mono" style="font-size:12px">${fmtDate(b.hire_date)}</td>
-      <td class="text-mono" style="font-size:12px">${fmtDate(b.baja_date)}</td>
+      <td class="text-mono" style="font-size:12px">${b.hire_date ? fmtDate(b.hire_date) : '—'}</td>
+      <td class="text-mono" style="font-size:12px">${b.baja_date ? fmtDate(b.baja_date) : '—'}</td>
       <td><span class="status-baja">${b.motivo}</span></td>
       <td style="font-size:12px;color:var(--c-muted)">${b.baja_by}</td>
     </tr>`).join('')}</tbody>
@@ -8261,7 +8376,7 @@ function renderDiversidad() {
     { icon:'♀️', num: fem + ' (' + pctF + '%)', label: 'Mujeres en el equipo' },
     { icon:'♂️', num: masc + ' (' + (100-pctF) + '%)', label: 'Hombres en el equipo' },
     { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países representados' },
-    { icon:'🎂', num: calcAvgAge(active) + ' años', label: 'Edad promedio' },
+    { icon:'📊', num: calcAvgAge(active) + ' años', label: 'Edad promedio' },
   ].map(k => '<div class="rep-kpi"><div class="rep-kpi-icon">' + k.icon + '</div>'
     + '<div class="rep-kpi-num">' + k.num + '</div>'
     + '<div class="rep-kpi-label">' + k.label + '</div></div>'
@@ -8269,9 +8384,9 @@ function renderDiversidad() {
 
   // Género donut
   makeDonut('chart-genero', [
-    { label:'Mujeres',  value: fem,  color:'#c2185b' },
-    { label:'Hombres',  value: masc, color:'#1565c0' },
-  ]);
+    { label:'Mujeres',  value: fem,  color:'#c2185b', emps: active.filter(e=>getGender(e)==='F') },
+    { label:'Hombres',  value: masc, color:'#1565c0', emps: active.filter(e=>getGender(e)==='M') },
+  ], 140, 'onChartSegClick');
 
   // Rango etario donut
   function ageGroup(e) {
@@ -8287,12 +8402,12 @@ function renderDiversidad() {
   const ageGroups = {};
   active.forEach(e => { const g = ageGroup(e); ageGroups[g] = (ageGroups[g]||0)+1; });
   const ageColors = ['#f48fb1','#ce93d8','#90caf9','#80cbc4','#a5d6a7','#fff176'];
-  makeDonut('chart-edad', Object.entries(ageGroups).map(([k,v],i) => ({ label:k, value:v, color:ageColors[i%ageColors.length] })));
+  makeDonut('chart-edad', Object.entries(ageGroups).map(([k,v],i) => ({ label:k, value:v, color:ageColors[i%ageColors.length], emps:active.filter(e=>ageGroup(e)===k) })), 140, 'onChartSegClick');
 
   // Género por área — horizontal bars con desglose
-  const depts = [...new Set(active.map(e=>e.dept))].sort();
+  const depts = [...new Set(active.map(e=>normalizeDept(e.dept)))].sort();
   const gaBars = depts.map(d => {
-    const dEmps = active.filter(e=>e.dept===d);
+    const dEmps = active.filter(e=>normalizeDept(e.dept)===d);
     const dFem  = dEmps.filter(e=>getGender(e)==='F').length;
     const dMasc = dEmps.length - dFem;
     return { dept:d, fem:dFem, masc:dMasc, tot:dEmps.length };
@@ -8320,7 +8435,7 @@ function renderDiversidad() {
   const geo = {};
   active.forEach(e => geo[e.country||'Argentina']=(geo[e.country||'Argentina']||0)+1);
   const geoColors = {'Argentina':'#4caf50','Colombia':'#ffd54f','Estados Unidos':'#42a5f5'};
-  makeDonut('chart-geo', Object.entries(geo).map(([k,v]) => ({ label:k, value:v, color:geoColors[k]||'#888' })));
+  makeDonut('chart-geo', Object.entries(geo).map(([k,v]) => ({ label:k, value:v, color:geoColors[k]||'#888', emps:active.filter(e=>(e.country||'Argentina')===k) })), 140, 'onChartSegClick');
 
   // Seniority x género
   const srGnEl = document.getElementById('chart-sr-genero');
@@ -8764,6 +8879,11 @@ function renderPolicyTable() {
       <div class="ldp-approvers">
         <div class="ldp-approvers-title">Aprobadores</div>
         <div id="ldp-approvers-list"></div>
+      </div>
+      <!-- Acciones HR (solo admin, solo pendiente) -->
+      <div id="ldp-action-row" style="display:none;margin-top:16px;display:flex;gap:8px">
+        <button class="approve-btn" style="flex:1;padding:10px 0;font-size:14px" onclick="ldpApprove(event)">✓ Aprobar</button>
+        <button class="reject-btn"  style="flex:1;padding:10px 0;font-size:14px" onclick="ldpReject(event)">✗ Rechazar</button>
       </div>
     </div>
   </div>
