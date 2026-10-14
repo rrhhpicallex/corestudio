@@ -15,8 +15,8 @@
 // <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 // ─── 2. Inicializar cliente ────────────────────────────────────
-const SUPABASE_URL      = 'https://xxxxxxxxxxxxxxxxxxxx.supabase.co'; // reemplazar
-const SUPABASE_ANON_KEY = 'eyJhbGci...';                              // reemplazar
+const SUPABASE_URL      = 'https://qzcdwtdmcpcakebfkwkm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6Y2R3dGRtY3BjYWtlYmZrd2ttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MjgwNTksImV4cCI6MjA5MTQwNDA1OX0.i3UEPzJxtBTwtzJ4bqeUgf_nUBekXxz3pONR5sJp77U';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

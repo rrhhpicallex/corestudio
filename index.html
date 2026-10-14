@@ -2959,6 +2959,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -4309,6 +4310,7 @@ a { color: inherit; text-decoration: none; }
   </main>
 </div>
 
+<script src="supabase/supabase-client.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════
    MOCK DATABASE
@@ -4987,7 +4989,8 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 /* ═══════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadDBFromSupabase();
   refreshVacBalances();
   renderDirectory(DB.employees);
   renderNotifs();
@@ -6681,7 +6684,7 @@ const CAT_META = {
 const REACTIONS_DEF = ['👏','❤️','🙌','🎉','🔥'];
 
 // Posts DB — starts with seed data
-const NOV_POSTS = [
+let NOV_POSTS = [
   {
     id: 'p1',
     cat: 'aniversario',
