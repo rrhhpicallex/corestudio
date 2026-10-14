@@ -3870,6 +3870,8 @@ a { color: inherit; text-decoration: none; }
           <button class="type-chip tc-extra" data-type="extra" data-tip="Extra Day: beneficio PicallEx de un día libre extra por año.\nNo acumulable. Se pierde si no se usa." onclick="setCalTypeFilter('extra',this)">🏖️ Extra Day</button>
           <button class="type-chip tc-mat" data-type="mat" data-tip="Licencia de maternidad o paternidad.\nSe configura según ley vigente en cada país." onclick="setCalTypeFilter('mat',this)">👶 Mat./Pat.</button>
           <button class="type-chip tc-bday" data-type="bday" data-tip="Día libre en el cumpleaños del colaborador.\nBeneficio PicallEx: tomalo el día o la semana de tu cumpleaños." onclick="setCalTypeFilter('bday',this)">🎂 Cumpleaños</button>
+          <button class="type-chip" data-type="Mudanza" style="background:#ffe0b2;color:#bf360c;border-color:#bf360c" data-tip="Licencia por mudanza." onclick="setCalTypeFilter('Mudanza',this)">📦 Mudanza</button>
+          <button class="type-chip" data-type="Final Days" style="background:#c5cae9;color:#1a237e;border-color:#1a237e" data-tip="Período de finalización laboral." onclick="setCalTypeFilter('Final Days',this)">📚 Final Days</button>
         </div>
         <div class="card" style="overflow-x:auto; padding:20px">
           <div id="gantt-container"><!-- dynamic --></div>
@@ -3880,6 +3882,8 @@ a { color: inherit; text-decoration: none; }
           <div class="gantt-legend-item"><div class="gantt-legend-dot extra"></div>🏖️ Extra Day</div>
           <div class="gantt-legend-item"><div class="gantt-legend-dot mat"></div>👶 Mat./Pat.</div>
           <div class="gantt-legend-item"><div class="gantt-legend-dot bday"></div>🎂 Cumpleaños</div>
+          <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#ffe0b2;border:1px solid #bf360c"></div>📦 Mudanza</div>
+          <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#c5cae9;border:1px solid #1a237e"></div>📚 Final Days</div>
         </div>
       </div>
 
@@ -5654,12 +5658,12 @@ const LEAVE_TYPE_STYLE = {
   'Vacaciones':           { emoji:'✈️', bg:'#bbdefb', text:'#0d47a1' },
   'Extra Day':            { emoji:'🏖️', bg:'#ffe0b2', text:'#e65100' },
   'Enfermedad':           { emoji:'💊',  bg:'#ffcdd2', text:'#b71c1c' },
-  'Mudanza':              { emoji:'📦',  bg:'#fff3e0', text:'#e65100' },
+  'Mudanza':              { emoji:'📦',  bg:'#ffe0b2', text:'#bf360c' },
   'Día de Cumpleaños':    { emoji:'🎂',  bg:'#f3e5f5', text:'#6a1b9a' },
   'Cumpleaños':           { emoji:'🎂',  bg:'#f3e5f5', text:'#6a1b9a' },
   'Chequeate/Tramitate':  { emoji:'🏥',  bg:'#e0f2f1', text:'#00695c' },
   'Licencia Especial':    { emoji:'📋',  bg:'#ede7f6', text:'#4527a0' },
-  'Final Days':           { emoji:'📚',  bg:'#e8eaf6', text:'#283593' },
+  'Final Days':           { emoji:'📚',  bg:'#c5cae9', text:'#1a237e' },
   'Maternidad/Paternidad':{ emoji:'👶',  bg:'#fce4ec', text:'#880e4f' },
   'bday':                 { emoji:'🎂',  bg:'#f3e5f5', text:'#6a1b9a' },
   'default':              { emoji:'📅',  bg:'#f5f5f5', text:'#616161' },
@@ -5736,7 +5740,9 @@ function renderGantt() {
           from_day: ev.from_day, to_day: ev.to_day,
           label: label, req_id: ev.req_id || ''
         }));
-        gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="color:${leaveStyle.text}" onclick="openLDP(decodeURIComponent('${evDataStr}'))">`;
+        const stdTypes = ['vac','sick','extra','mat','bday'];
+        const bgInline = stdTypes.includes(ev.type) ? '' : `background:${leaveStyle.bg};`;
+        gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="${bgInline}color:${leaveStyle.text}" onclick="openLDP(decodeURIComponent('${evDataStr}'))">`;
         if (isFirst) {
           gridHtml += `<span style="position:absolute;top:50%;left:4px;transform:translateY(-50%);font-size:11px;line-height:1;white-space:nowrap">${icon}</span>`;
         }
