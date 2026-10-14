@@ -1221,7 +1221,7 @@ a { color: inherit; text-decoration: none; }
 .leave-detail-overlay.open .leave-detail-backdrop { opacity: 1; }
 .leave-detail-panel {
   position: absolute; top: 0; right: 0; bottom: 0;
-  width: 340px; background: var(--c-card);
+  width: 360px; background: var(--c-card);
   border-left: 1px solid var(--c-border);
   box-shadow: var(--shadow-lg);
   transform: translateX(100%);
@@ -1263,34 +1263,50 @@ a { color: inherit; text-decoration: none; }
 .ldp-meta { font-size: 12px; color: var(--c-muted); margin-bottom: 20px; }
 
 /* mini calendar inside panel */
-.mini-cal { margin-bottom: 20px; }
+.mini-cal { margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: 1px solid var(--c-border); }
 .mini-cal-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px;
+  padding: 10px 14px 8px; background: var(--c-surface);
 }
 .mini-cal-title { font-weight: 700; font-size: 13px; }
-.mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 6px 6px 8px; background: var(--c-card); }
 .mini-cal-dow {
-  font-size: 10px; font-weight: 700; text-align: center;
+  font-size: 9.5px; font-weight: 700; text-align: center;
   color: var(--c-muted); padding: 4px 0;
   text-transform: uppercase; letter-spacing: .3px;
 }
 .mini-cal-day {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  border-radius: 6px; font-size: 12px; font-weight: 500;
-  color: var(--c-text); cursor: default;
+  border-radius: 5px; font-size: 11.5px; font-weight: 500;
+  color: var(--c-text); cursor: default; transition: none;
 }
 .mini-cal-day.empty { background: none; }
-.mini-cal-day.in-range {
-  background: var(--c-accent-light); color: var(--c-accent-hover);
-  font-weight: 700;
-}
+.mini-cal-day.wknd { opacity: .45; }
+.mini-cal-day.in-range { font-weight: 700; }
 .mini-cal-day.range-start, .mini-cal-day.range-end {
-  background: linear-gradient(135deg, var(--c-accent), #2e7d32);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--c-accent-glow-sm);
+  color: #fff !important; font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+.mini-cal-day.return-day {
+  outline: 2px dashed var(--c-accent); outline-offset: -2px;
+  font-weight: 700; color: var(--c-accent);
 }
 .mini-cal-day.today-mark { outline: 2px solid var(--c-accent); outline-offset: -2px; }
+/* LDP note */
+.ldp-note {
+  background: var(--c-surface); border-radius: 8px; border-left: 3px solid var(--c-border);
+  padding: 10px 12px; font-size: 12px; color: var(--c-muted); margin-bottom: 16px;
+  line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+}
+/* Return date row */
+.ldp-return-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 8px;
+  background: var(--c-surface); margin-bottom: 14px;
+  font-size: 12.5px;
+}
+.ldp-return-label { color: var(--c-muted); }
+.ldp-return-date  { font-weight: 700; color: var(--c-text); }
 
 .ldp-summary-row {
   display: flex; gap: 12px; margin-bottom: 20px;
@@ -5427,6 +5443,7 @@ function openLDP(dataStr) {
 
   const emp = DB.employees.find(e => e.id === evData.emp_id);
   if (!emp) return;
+  window._ldpEmpId = emp.id;
 
   // Find matching leave request — first by req_id (exact), then by type+month
   let req = null;
@@ -5434,10 +5451,8 @@ function openLDP(dataStr) {
     req = (emp.leave_requests || []).find(r => r.id === evData.req_id) || null;
   }
   if (!req && evData.type !== 'bday') {
-    // Fallback: match by type and the gantt month/year visible
     req = (emp.leave_requests || []).find(r => {
       if (r.type !== evData.fullType) return false;
-      // Check if this request overlaps with the current gantt month
       const fromDate = new Date(r.from);
       const toDate   = new Date(r.to);
       return (fromDate.getMonth() === ganttMonth && fromDate.getFullYear() === ganttYear)
@@ -5446,54 +5461,125 @@ function openLDP(dataStr) {
     }) || null;
   }
 
-  const typeIcons = {
-    'Vacaciones':'✈️','Enfermedad':'💊','Extra Day':'🏖️','Cumpleaños':'🎂',
-    'Fallecimiento':'🕊️','Trámite':'📋','Mudanza':'📦','Paternidad':'👶',
-    'Final Days':'📅','Licencia Especial':'⭐', bday:'🎂'
-  };
+  // Resolve leave type + style
+  const fullType = (req ? req.type : null) || evData.fullType || evData.type;
+  const style    = getLeaveStyle(fullType);
 
-  document.getElementById('ldp-icon').textContent      = typeIcons[evData.fullType || evData.type] || '📅';
-  document.getElementById('ldp-type-name').textContent = evData.fullType || evData.type;
-  document.getElementById('ldp-person-av').textContent  = emp.initials;
-  document.getElementById('ldp-person-av').style.background = emp.color;
-  document.getElementById('ldp-person-name').textContent   = emp.name;
-  document.getElementById('ldp-person-role').textContent   = emp.title;
+  // Color the header with leave type palette
+  const header = document.getElementById('ldp-header');
+  if (header) {
+    header.style.background = style.bg;
+    header.style.color      = style.text;
+    header.style.borderBottom = `2px solid ${style.text}22`;
+  }
+
+  document.getElementById('ldp-icon').textContent      = style.emoji;
+  document.getElementById('ldp-type-name').textContent = fullType === 'bday' ? 'Cumpleaños' : fullType;
+
+  // Employee avatar + name
+  document.getElementById('ldp-person-av').textContent       = emp.initials;
+  document.getElementById('ldp-person-av').style.background  = emp.color;
+  document.getElementById('ldp-person-name').textContent     = emp.name;
+  document.getElementById('ldp-person-name').style.color     = emp.color;
+  document.getElementById('ldp-person-role').textContent     = (emp.title || '') + (emp.dept ? ' · ' + emp.dept : '');
+
+  // Return-date helper: next weekday after toDate
+  function nextWorkday(dateStr) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  const DAYS_ES_L = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
   if (req) {
     const days = req.days;
-    document.getElementById('ldp-dates').textContent = `${fmtDateShort(req.from)} → ${fmtDateShort(req.to)}`;
-    document.getElementById('ldp-meta').textContent  = `${days} día${days !== 1 ? 's' : ''} · ${req.ts}`;
-    document.getElementById('ldp-days').textContent  = days;
-    document.getElementById('ldp-status-val').textContent = capitalize(req.status);
-    document.getElementById('ldp-status-val').style.color = req.status === 'aprobado' ? 'var(--c-accent)' : req.status === 'rechazado' ? 'var(--c-danger)' : 'var(--c-muted)';
-    renderMiniCal(req.from, req.to);
+    document.getElementById('ldp-dates').textContent     = `${fmtDateShort(req.from)} → ${fmtDateShort(req.to)}`;
+    document.getElementById('ldp-days').textContent      = days;
+    const statusEl = document.getElementById('ldp-status-val');
+    statusEl.textContent = capitalize(req.status);
+    statusEl.style.color = req.status === 'aprobado' ? 'var(--c-accent)' : req.status === 'rechazado' ? 'var(--c-danger)' : 'var(--c-muted)';
+
+    // Reincorporación
+    const returnD = nextWorkday(req.to);
+    const retStr  = DAYS_ES_L[returnD.getDay()] + ' ' + fmtDateShort(returnD.toISOString().split('T')[0]);
+    document.getElementById('ldp-return-date').textContent = retStr;
+    document.getElementById('ldp-return-row').style.display = '';
+
+    renderMiniCal(req.from, req.to, style.bg, style.text, returnD);
+
+    // Note
+    const noteEl = document.getElementById('ldp-note');
+    const noteWrap = document.getElementById('ldp-note-wrap');
+    const noteText = (req.note || '').replace(/^"|"$/g, '').trim();
+    if (noteText) {
+      noteEl.textContent = noteText;
+      noteWrap.style.display = '';
+    } else {
+      noteWrap.style.display = 'none';
+    }
   } else if (evData.type === 'bday') {
     document.getElementById('ldp-dates').textContent = `${MONTH_NAMES[ganttMonth]} ${evData.from_day}`;
-    document.getElementById('ldp-meta').textContent  = '🎂 Cumpleaños';
-    document.getElementById('ldp-days').textContent  = '—';
-    document.getElementById('ldp-status-val').textContent = '🎉';
-    renderMiniCalFromDay(evData.from_day, evData.from_day);
+    document.getElementById('ldp-days').textContent  = '🎉';
+    document.getElementById('ldp-status-val').textContent = '¡Feliz cumple!';
+    document.getElementById('ldp-return-row').style.display = 'none';
+    document.getElementById('ldp-note-wrap').style.display  = 'none';
+    renderMiniCalFromDay(evData.from_day, evData.from_day, style.bg, style.text, null);
   } else {
+    const nDays = evData.to_day - evData.from_day + 1;
     document.getElementById('ldp-dates').textContent = `Día ${evData.from_day} → ${evData.to_day}`;
-    document.getElementById('ldp-meta').textContent  = `${evData.to_day - evData.from_day + 1} días`;
-    document.getElementById('ldp-days').textContent  = evData.to_day - evData.from_day + 1;
+    document.getElementById('ldp-days').textContent  = nDays;
     document.getElementById('ldp-status-val').textContent = 'Registrado';
-    renderMiniCalFromDay(evData.from_day, evData.to_day);
+    document.getElementById('ldp-return-row').style.display = 'none';
+    document.getElementById('ldp-note-wrap').style.display  = 'none';
+    renderMiniCalFromDay(evData.from_day, evData.to_day, style.bg, style.text, null);
   }
 
-  // Approvers
+  // Approvers — use real reviewer from req, then fallback to APPROVERS list
   const apprList = document.getElementById('ldp-approvers-list');
-  const showApprovers = evData.type !== 'bday';
-  apprList.innerHTML = showApprovers ? APPROVERS.slice(0,3).map(a => `
-    <div class="ldp-approver-item">
-      <div class="ldp-appr-av" style="background:${a.color}">${a.initials}</div>
-      <div>
-        <div class="ldp-appr-name">${a.name}</div>
-        <div class="ldp-appr-sub">Aprobado por ${a.name.split(' ')[0]}</div>
-      </div>
-      <div class="ldp-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" fill="var(--c-accent-light)"/><polyline points="9 12 11 14 15 10" stroke="var(--c-accent)"/></svg></div>
-    </div>
-  `).join('') : '<div style="font-size:13px;color:var(--c-muted);padding:8px 0">Sin aprobadores requeridos</div>';
+  if (evData.type === 'bday') {
+    apprList.innerHTML = '<div style="font-size:13px;color:var(--c-muted);padding:8px 0">Sin aprobadores requeridos</div>';
+  } else {
+    // Build approver cards
+    const approvers = [];
+    // Real reviewer from request
+    if (req && req.reviewer && req.reviewer !== '—') {
+      const revName = req.reviewer.replace(' En fila', '').trim();
+      const known   = APPROVERS.find(a => a.name.includes(revName.split(' ')[0]) || revName.includes(a.name.split(' ')[0]));
+      approvers.push({
+        name: revName,
+        role: known ? known.role : 'HR · PicallEx',
+        color: known ? known.color : '#1565c0',
+        initials: revName.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0,2).toUpperCase(),
+        status: req ? req.status : 'pendiente'
+      });
+    }
+    // If status approved, always add the approver even if name is '—'
+    if (approvers.length === 0) {
+      APPROVERS.slice(0,2).forEach(a => approvers.push({ ...a, status: req ? req.status : 'pendiente' }));
+    }
+
+    apprList.innerHTML = approvers.map(a => {
+      const isPending  = a.status === 'pendiente';
+      const isRejected = a.status === 'rechazado';
+      const icon = isPending
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="#f57f17" stroke-width="2.5" style="width:18px;height:18px"><circle cx="12" cy="12" r="10" fill="#fff8e1"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+        : isRejected
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2.5" style="width:18px;height:18px"><circle cx="12" cy="12" r="10" fill="#fce4ec"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-accent)" stroke-width="2.5" style="width:18px;height:18px"><circle cx="12" cy="12" r="10" fill="var(--c-accent-light)"/><polyline points="9 12 11 14 15 10" stroke="var(--c-accent)"/></svg>`;
+      const subLabel = isPending ? 'Pendiente de aprobación' : isRejected ? 'Rechazado' : `Aprobado · ${req && req.ts ? req.ts : ''}`;
+      return `<div class="ldp-approver-item">
+        <div class="ldp-appr-av" style="background:${a.color}">${a.initials}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ldp-appr-name">${a.name}</div>
+          <div class="ldp-appr-sub">${a.role}</div>
+          <div style="font-size:10.5px;color:${isPending?'#f57f17':isRejected?'#c62828':'var(--c-accent)'};margin-top:2px">${subLabel}</div>
+        </div>
+        <div class="ldp-check">${icon}</div>
+      </div>`;
+    }).join('');
+  }
 
   document.getElementById('ldp-overlay').classList.add('open');
 }
@@ -5502,43 +5588,73 @@ function closeLDP() {
   document.getElementById('ldp-overlay').classList.remove('open');
 }
 
-function renderMiniCal(fromStr, toStr) {
+function renderMiniCal(fromStr, toStr, bgColor, textColor, returnDate) {
   const from = new Date(fromStr);
   const to   = new Date(toStr);
-  renderMiniCalFromDay(from.getDate(), to.getDate(), from.getMonth(), from.getFullYear());
+  // If the leave spans multiple months, show from-month; render extra month if needed
+  renderMiniCalFromDay(from.getDate(), to.getDate(), from.getMonth(), from.getFullYear(), bgColor, textColor, returnDate);
+  // If end month is different, also render it
+  if (to.getMonth() !== from.getMonth() || to.getFullYear() !== from.getFullYear()) {
+    renderMiniCalSecondMonth(from, to, bgColor, textColor, returnDate);
+  }
 }
 
-function renderMiniCalFromDay(fromDay, toDay, month, year) {
-  month = month !== undefined ? month : ganttMonth;
-  year  = year  !== undefined ? year  : ganttYear;
+function renderMiniCalSecondMonth(from, to, bgColor, textColor, returnDate) {
+  // Append a second mini-cal for the end month
+  const el = document.getElementById('ldp-mini-cal');
+  const fromDay2 = 1;
+  const toDay2   = to.getDate();
+  const month2   = to.getMonth();
+  const year2    = to.getFullYear();
+  const retDay   = returnDate && returnDate.getMonth() === month2 && returnDate.getFullYear() === year2 ? returnDate.getDate() : -1;
+  el.innerHTML += buildMiniCalHTML(fromDay2, toDay2, month2, year2, bgColor, textColor, retDay);
+}
+
+function buildMiniCalHTML(fromDay, toDay, month, year, bgColor, textColor, retDay) {
   const totalDays = daysInMonth(month, year);
-  const firstDow  = new Date(year, month, 1).getDay(); // 0=Sun
-  // Adjust to Mon-first
-  const offset = (firstDow + 6) % 7;
+  const firstDow  = new Date(year, month, 1).getDay();
+  const offset    = (firstDow + 6) % 7;
   const todayD = new Date().getDate();
   const todayM = new Date().getMonth();
   const todayY = new Date().getFullYear();
-  const dows = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const dows = ['L','M','X','J','V','S','D'];
 
   let html = `<div class="mini-cal-header">
-    <span class="mini-cal-title">${MONTH_NAMES[month]} de ${year}</span>
-  </div>
-  <div class="mini-cal-grid">`;
+    <span class="mini-cal-title">${MONTH_NAMES[month]} ${year}</span>
+  </div><div class="mini-cal-grid">`;
   dows.forEach(d => html += `<div class="mini-cal-dow">${d}</div>`);
   for (let i = 0; i < offset; i++) html += `<div class="mini-cal-day empty"></div>`;
   for (let d = 1; d <= totalDays; d++) {
+    const dow     = new Date(year, month, d).getDay();
+    const isWknd  = dow === 0 || dow === 6;
     const inRange = d >= fromDay && d <= toDay;
     const isStart = d === fromDay;
     const isEnd   = d === toDay;
     const isToday = d === todayD && month === todayM && year === todayY;
+    const isRet   = d === retDay;
     let cls = 'mini-cal-day';
-    if (isStart || isEnd) cls += ' range-start';
-    else if (inRange) cls += ' in-range';
-    if (isToday) cls += ' today-mark';
-    html += `<div class="${cls}">${d}</div>`;
+    if (isWknd && !inRange) cls += ' wknd';
+    let extraStyle = '';
+    if (isStart || isEnd) {
+      cls += ' range-start';
+      extraStyle = `background:${textColor || '#1565c0'};`;
+    } else if (inRange) {
+      cls += ' in-range';
+      extraStyle = `background:${bgColor || '#e3f2fd'};color:${textColor || '#1565c0'};`;
+    }
+    if (isRet) cls += ' return-day';
+    if (isToday && !inRange) cls += ' today-mark';
+    html += `<div class="${cls}" style="${extraStyle}" title="${isRet ? 'Reincorporación' : ''}">${d}</div>`;
   }
   html += `</div>`;
-  document.getElementById('ldp-mini-cal').innerHTML = html;
+  return html;
+}
+
+function renderMiniCalFromDay(fromDay, toDay, month, year, bgColor, textColor, returnDate) {
+  month = month !== undefined ? month : ganttMonth;
+  year  = year  !== undefined ? year  : ganttYear;
+  const retDay = returnDate && returnDate.getMonth() === month && returnDate.getFullYear() === year ? returnDate.getDate() : -1;
+  document.getElementById('ldp-mini-cal').innerHTML = buildMiniCalHTML(fromDay, toDay, month, year, bgColor, textColor, retDay);
 }
 
 
@@ -8138,30 +8254,50 @@ function renderPolicyTable() {
 <div class="leave-detail-overlay" id="ldp-overlay">
   <div class="leave-detail-backdrop" onclick="closeLDP()"></div>
   <div class="leave-detail-panel" id="ldp-panel">
-    <div class="ldp-header">
+    <!-- Header: tipo de licencia con color dinámico -->
+    <div class="ldp-header" id="ldp-header" style="padding:16px 20px 14px">
       <div class="ldp-type-badge">
-        <span class="ldp-icon" id="ldp-icon">✈️</span>
-        <span id="ldp-type-name">Vacaciones</span>
+        <span class="ldp-icon" id="ldp-icon" style="font-size:26px">✈️</span>
+        <div>
+          <div id="ldp-type-name" style="font-size:15px;font-weight:800;line-height:1.2">Vacaciones</div>
+          <div id="ldp-dates" style="font-size:12px;font-weight:400;opacity:.8;margin-top:1px">06 Ene → 17 Ene</div>
+        </div>
       </div>
-      <button class="btn-close" onclick="closeLDP()">
+      <button class="btn-close" onclick="closeLDP()" style="color:inherit;opacity:.7">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="ldp-person">
-      <div class="ldp-person-av" id="ldp-person-av">NM</div>
-      <div>
-        <div class="ldp-person-name" id="ldp-person-name">Natalia Maffini</div>
+    <!-- Persona -->
+    <div class="ldp-person" style="padding:12px 20px">
+      <div class="ldp-person-av" id="ldp-person-av" style="width:42px;height:42px;border-radius:12px;font-size:14px">NM</div>
+      <div style="flex:1;min-width:0">
+        <div class="ldp-person-name" id="ldp-person-name" style="font-size:15px">Natalia Maffini</div>
         <div class="ldp-person-role" id="ldp-person-role">VP - C2R</div>
       </div>
+      <button style="background:none;border:none;cursor:pointer;padding:4px;color:var(--c-muted)" title="Ver perfil" onclick="closeLDP();openProfile(window._ldpEmpId)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </button>
     </div>
     <div class="ldp-body">
-      <div class="ldp-dates" id="ldp-dates">06 Ene → 17 Ene</div>
-      <div class="ldp-meta" id="ldp-meta">1.0 días · Creado 15 dic 2025</div>
-      <div class="ldp-summary-row">
+      <!-- Resumen días + estado -->
+      <div class="ldp-summary-row" style="margin-bottom:14px">
         <div class="ldp-sum-box"><div class="ldp-sum-num" id="ldp-days">10</div><div class="ldp-sum-label">Días</div></div>
-        <div class="ldp-sum-box"><div class="ldp-sum-num" id="ldp-status-val" style="font-size:14px">Aprobado</div><div class="ldp-sum-label">Estado</div></div>
+        <div class="ldp-sum-box"><div class="ldp-sum-num" id="ldp-status-val" style="font-size:13px">Aprobado</div><div class="ldp-sum-label">Estado</div></div>
       </div>
+      <!-- Reincorporación -->
+      <div class="ldp-return-row" id="ldp-return-row">
+        <span style="font-size:16px">🏢</span>
+        <span class="ldp-return-label">Reincorporación:</span>
+        <span class="ldp-return-date" id="ldp-return-date">—</span>
+      </div>
+      <!-- Mini calendario -->
       <div class="mini-cal" id="ldp-mini-cal"></div>
+      <!-- Nota -->
+      <div id="ldp-note-wrap" style="display:none;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--c-muted);margin-bottom:6px">Comentario</div>
+        <div class="ldp-note" id="ldp-note"></div>
+      </div>
+      <!-- Aprobadores -->
       <div class="ldp-approvers">
         <div class="ldp-approvers-title">Aprobadores</div>
         <div id="ldp-approvers-list"></div>
