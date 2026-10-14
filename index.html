@@ -4248,7 +4248,6 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-tab active" onclick="switchRepTab('headcount', this)">Headcount</div>
       <div class="rep-tab" onclick="switchRepTab('licencias', this)">Licencias</div>
       <div class="rep-tab" onclick="switchRepTab('estructura', this)">Estructura</div>
-      <div class="rep-tab" onclick="switchRepTab('retencion', this)">📉 Retención</div>
       <div class="rep-tab" onclick="switchRepTab('evolucion', this)">📈 Evolución</div>
       <div class="rep-tab" onclick="switchRepTab('diversidad', this)">🌍 Diversidad</div>
       <div class="rep-tab" onclick="switchRepTab('bajas', this)">Bajas</div>
@@ -4285,6 +4284,31 @@ a { color: inherit; text-decoration: none; }
         <div class="rep-chart-title">Últimos ingresos al equipo</div>
         <div class="rep-chart-sub">Colaboradores incorporados más recientemente</div>
         <div id="rep-recent-hires"></div>
+      </div>
+
+      <!-- RETENCIÓN (movido desde tab propio) -->
+      <div class="rep-kpis" id="rep-kpis-retencion" style="margin-top:8px"></div>
+      <div class="rep-chart-card full" style="margin-bottom:18px">
+        <div class="rep-chart-title">📊 Benchmark — Mercado IT Argentina 2024–2025</div>
+        <div class="rep-chart-sub">Comparativa de indicadores clave vs. promedios del sector</div>
+        <div id="chart-benchmark"></div>
+      </div>
+      <div class="rep-chart-grid">
+        <div class="rep-chart-card">
+          <div class="rep-chart-title">Tasa de retención por área</div>
+          <div class="rep-chart-sub">% de permanencia en los últimos 12 meses</div>
+          <div id="chart-retencion-area"></div>
+        </div>
+        <div class="rep-chart-card">
+          <div class="rep-chart-title">Distribución por ventana de riesgo</div>
+          <div class="rep-chart-sub">Basado en antigüedad + nivel + modalidad</div>
+          <div class="donut-wrap" id="chart-riesgo-donut"></div>
+        </div>
+        <div class="rep-chart-card full">
+          <div class="rep-chart-title">Índice de riesgo individual</div>
+          <div class="rep-chart-sub">Score calculado: antigüedad estancada · nivel sin progresión · modalidad · contrato</div>
+          <div id="chart-riesgo-individual"></div>
+        </div>
       </div>
     </div>
 
@@ -4333,34 +4357,6 @@ a { color: inherit; text-decoration: none; }
     </div>
 
     <!-- RETENCIÓN & RIESGO -->
-    <div class="rep-panel" id="rp-retencion">
-      <div class="rep-kpis" id="rep-kpis-retencion"></div>
-
-      <!-- Benchmark IT Argentina -->
-      <div class="rep-chart-card full" style="margin-bottom:18px">
-        <div class="rep-chart-title">📊 Benchmark — Mercado IT Argentina 2024–2025</div>
-        <div class="rep-chart-sub">Comparativa de indicadores clave vs. promedios del sector</div>
-        <div id="chart-benchmark"></div>
-      </div>
-
-      <div class="rep-chart-grid">
-        <div class="rep-chart-card">
-          <div class="rep-chart-title">Tasa de retención por área</div>
-          <div class="rep-chart-sub">% de permanencia en los últimos 12 meses</div>
-          <div id="chart-retencion-area"></div>
-        </div>
-        <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por ventana de riesgo</div>
-          <div class="rep-chart-sub">Basado en antigüedad + nivel + modalidad</div>
-          <div class="donut-wrap" id="chart-riesgo-donut"></div>
-        </div>
-        <div class="rep-chart-card full">
-          <div class="rep-chart-title">Índice de riesgo individual</div>
-          <div class="rep-chart-sub">Score calculado: antigüedad estancada · nivel sin progresión · modalidad · contrato</div>
-          <div id="chart-riesgo-individual"></div>
-        </div>
-      </div>
-    </div>
 
     <!-- EVOLUCIÓN TEMPORAL -->
     <div class="rep-panel" id="rp-evolucion">
@@ -6888,7 +6884,6 @@ function renderRepTab(tab) {
   if (tab === 'headcount')  renderHeadcount();
   if (tab === 'licencias')  renderLicenciasRep();
   if (tab === 'estructura') renderEstructura();
-  if (tab === 'retencion')  renderRetencion();
   if (tab === 'evolucion')  renderEvolucion();
   if (tab === 'diversidad') renderDiversidad();
   if (tab === 'bajas')      renderBajasRep();
@@ -7146,6 +7141,9 @@ function renderHeadcount() {
       '</div>';
     }).join('');
   }
+
+  // Render retención inline (moved into headcount)
+  renderRetencion();
 }
 
 /* ── LICENCIAS ── */
