@@ -8433,7 +8433,7 @@ function renderPolicyTable() {
       if (fPolitica === 'col'  && !isColombia)                       return null;
     }
 
-    // Tomados histórico
+    // Tomados histórico (desde leave_requests, fuente de verdad)
     const vacUsed = (emp.leave_requests || [])
       .filter(r => r.status === 'aprobado' && r.type === 'Vacaciones')
       .reduce((s, r) => s + (r.days || 0), 0);
@@ -8443,8 +8443,13 @@ function renderPolicyTable() {
       .filter(r => r.status === 'aprobado' && r.type === 'Vacaciones' && (r.from || '').startsWith(String(thisYear)))
       .reduce((s, r) => s + (r.days || 0), 0);
 
-    // Disponibles
-    const available = days - usedThisYear;
+    // Total acreditado histórico (gestionado por HR en leave_balances.vacaciones.total)
+    const vac = emp.leave_balances?.vacaciones || {};
+    const totalAccrued = vac.total || 0;
+
+    // Disponibles = total acreditado − total usado (todas las épocas)
+    // (NO es días/año − usados en el año actual — eso daría negativo al tomar vacaciones anticipadas)
+    const available = totalAccrued - vacUsed;
 
     // Alerta
     const lowBalance = available < 3 && yearsTotal > 0.08;
@@ -8454,7 +8459,7 @@ function renderPolicyTable() {
     const monthsSinceLastVac = lastVac
       ? Math.round((today - new Date(lastVac.to)) / (30.44 * 24 * 3600 * 1000))
       : Math.round(yearsTotal * 12);
-    const expiring = monthsSinceLastVac > 12 && yearsTotal > 0.5 && vacUsed < days;
+    const expiring = monthsSinceLastVac > 12 && yearsTotal > 0.5 && available > 0;
     const hasAlert = lowBalance || expiring;
 
     if (fAlerta === 'alerta' && !hasAlert) return null;
@@ -8473,11 +8478,11 @@ function renderPolicyTable() {
       : hiringMonth < 7 ? '1er sem · completo' : '2do sem · proporcional';
 
     let alertIcons = '';
-    if (lowBalance) alertIcons += '<span data-tip="Le quedan ' + available + ' días en 2026 de ' + days + ' que le corresponden.\nConsiderá planificar vacaciones próximamente." style="cursor:default;font-size:16px">⚠️</span> ';
+    if (lowBalance) alertIcons += '<span data-tip="Le quedan ' + available + 'd disponibles (total acreditado: ' + totalAccrued + 'd, usados: ' + vacUsed + 'd).\nConsiderá planificar vacaciones próximamente." style="cursor:default;font-size:16px">⚠️</span> ';
     if (expiring)   alertIcons += '<span data-tip="Lleva ' + monthsSinceLastVac + ' meses sin tomar vacaciones.\nLos días acumulados sin liquidar pueden generar deuda laboral." style="cursor:default;font-size:16px">⏰</span>';
 
     return {
-      emp, days, vacUsed, usedThisYear, available, hasAlert, alertIcons,
+      emp, days, vacUsed, usedThisYear, available, totalAccrued, hasAlert, alertIcons,
       flagIcon, tenureStr, tenureTipStr, polLabel, yearsTotal, country,
       name: emp.name, tenure: yearsTotal
     };
@@ -8491,17 +8496,18 @@ function renderPolicyTable() {
     return _policySortAsc ? cmp : -cmp;
   });
 
-  const rows = rowData.map(({ emp, days, vacUsed, usedThisYear, available, hasAlert, alertIcons, flagIcon, tenureStr, tenureTipStr, polLabel, country }) => {
+  const rows = rowData.map(({ emp, days, vacUsed, usedThisYear, available, totalAccrued, hasAlert, alertIcons, flagIcon, tenureStr, tenureTipStr, polLabel, country }) => {
     const availColor = available < 0 ? '#c62828' : available < 3 ? '#e65100' : 'var(--c-accent)';
 
-    // Tooltip for available: explain negative
+    // Tooltip for available: explain the total accrued − total used logic
     let availTip = '';
     if (available < 0) {
-      availTip = 'Tomó ' + usedThisYear + 'd en ' + today.getFullYear() + ' pero le corresponden ' + days + 'd.\n'
-        + 'Saldo negativo de ' + Math.abs(available) + 'd: la política PicallEx\npermite adelantar vacaciones. Se descontará\ndel siguiente período.';
+      availTip = 'Total acreditado: ' + totalAccrued + 'd · Usados en toda su historia: ' + vacUsed + 'd\n'
+        + '→ Saldo negativo de ' + Math.abs(available) + 'd.\n'
+        + 'La política PicallEx permite adelantar vacaciones;\nese saldo se descuenta del siguiente período de acreditación.';
     } else {
-      availTip = 'Le restan ' + available + 'd de los ' + days + 'd de su tramo.\n'
-        + 'Tomados en ' + today.getFullYear() + ': ' + usedThisYear + 'd.';
+      availTip = 'Total acreditado: ' + totalAccrued + 'd · Usados históricamente: ' + vacUsed + 'd\n'
+        + '→ ' + available + 'd disponibles para usar.\nUsados solo en ' + today.getFullYear() + ': ' + usedThisYear + 'd.';
     }
 
     const daysClass = country === 'Colombia' ? 'days-badge days-col' : 'days-badge days-arg';
@@ -8534,8 +8540,8 @@ function renderPolicyTable() {
       + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px">'
         + '<span data-tip="Días de vacaciones aprobados con inicio en ' + today.getFullYear() + '.">' + usedThisYear + 'd</span>'
       + '</td>'
-      // Disponibles (con tooltip explicativo, especialmente si es negativo)
-      + '<td style="text-align:center"><span data-tip="' + availTip.replace(/"/g, '&quot;') + '" style="font-size:14px;font-weight:700;color:' + availColor + ';cursor:default">' + available + 'd</span></td>'
+      // Disponibles (con tooltip anclado a la derecha para evitar clipping)
+      + '<td style="text-align:center"><span data-tip="' + availTip.replace(/"/g, '&quot;') + '" data-tip-pos="right" style="font-size:14px;font-weight:700;color:' + availColor + ';cursor:default">' + available + 'd</span></td>'
       // Alerta
       + '<td style="text-align:center;font-size:16px">' + (alertIcons || '<span style="color:var(--c-muted);font-size:12px">—</span>') + '</td>'
       + '</tr>';
