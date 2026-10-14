@@ -16,11 +16,15 @@
     # Permite llamadas a Supabase y Anthropic desde el browser
     Content-Security-Policy = """
       default-src 'self' 'unsafe-inline' 'unsafe-eval';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval'
+        https://cdn.jsdelivr.net
+        https://cdnjs.cloudflare.com;
       connect-src 'self'
         https://*.supabase.co
         https://api.anthropic.com
+        https://cdn.jsdelivr.net
         https://cdnjs.cloudflare.com;
-      img-src 'self' data: blob:;
+      img-src 'self' data: blob: https://*.supabase.co;
       font-src 'self' https://fonts.gstatic.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     """
