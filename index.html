@@ -4260,9 +4260,9 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-headcount"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Ingresos por mes (2025–2026)</div>
-          <div class="rep-chart-sub">Nuevos colaboradores incorporados</div>
-          <svg class="chart-svg" id="chart-ingresos" height="180"></svg>
+          <div class="rep-chart-title">Evolución histórica del equipo</div>
+          <div class="rep-chart-sub">Ingresos por año · ···· Bajas por año</div>
+          <svg class="chart-svg" id="chart-ingresos" height="200"></svg>
         </div>
         <div class="rep-chart-card">
           <div class="rep-chart-title">Colaboradores por área</div>
@@ -7082,34 +7082,27 @@ function renderHeadcount() {
     { icon:'⏱️', num: avgTenure + ' años',              label: 'Antigüedad promedio' },
   ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
-  // Bar chart ingresos por mes
-  const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const countByMonth = Array(12).fill(0);
-  active.forEach(e => {
-    if (e.hire_date?.startsWith(String(thisYear))) {
-      const m = parseInt(e.hire_date.split('-')[1]) - 1;
-      countByMonth[m]++;
-    }
-  });
-  // Also add last year partial
-  const prev = String(thisYear-1);
-  const prevCounts = Array(12).fill(0);
-  active.forEach(e => {
-    if (e.hire_date?.startsWith(prev)) {
-      const m = parseInt(e.hire_date.split('-')[1]) - 1;
-      prevCounts[m]++;
-    }
-  });
-  const svg = document.getElementById('chart-ingresos');
-  if (svg) {
-    const W = (svg.parentElement?.offsetWidth || svg.parentElement?.clientWidth || 480);
-    const data = MONTHS.map((l,i) => ({
-      label: l,
-      value: countByMonth[i] + prevCounts[i],
-      emps: active.filter(e => e.hire_date && (parseInt(e.hire_date.split('-')[1])-1) === i)
-    }));
-    makeBarChart('chart-ingresos', data, CHART_COLORS[0], 'onChartSegClick');
-  }
+  // Combo chart: ingresos y bajas por año (histórico completo)
+  const allEmps = DB.employees; // incluye activos e inactivos
+  const firstHireYear = Math.min(...allEmps.filter(e=>e.hire_date).map(e=>parseInt(e.hire_date.split('-')[0])));
+  const years = [];
+  for (let y = (isNaN(firstHireYear) ? thisYear-5 : firstHireYear); y <= thisYear; y++) years.push(y);
+
+  // Bajas por año — combina DB.bajas y empleados inactivos con end_date/termination_date
+  const bajasAll = [...(DB.bajas || [])];
+  const inactivoIds = new Set(bajasAll.map(b=>b.emp_id||b.id));
+  allEmps.filter(e=>e.status==='inactivo' && !inactivoIds.has(e.id)).forEach(e=>bajasAll.push({ baja_date: e.end_date||e.termination_date||'' }));
+
+  const barData = years.map(y => ({
+    label: String(y),
+    value: allEmps.filter(e => e.hire_date?.startsWith(String(y))).length,
+    emps:  allEmps.filter(e => e.hire_date?.startsWith(String(y)))
+  }));
+  const lineData = years.map(y => ({
+    value: bajasAll.filter(b => (b.baja_date||'').startsWith(String(y))).length
+  }));
+
+  makeComboBarLine('chart-ingresos', barData, lineData);
 
   // Horizontal bars by dept
   const deptCount = {};
@@ -8311,6 +8304,61 @@ function renderEvolucion() {
 }
 
 // Line chart SVG helper
+// Combo chart: bars (hires) + dotted line (terminations) by year
+function makeComboBarLine(svgId, barData, lineData) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = svg.parentElement?.offsetWidth || svg.parentElement?.clientWidth || 600;
+  const H = 200;
+  const pad = { top:24, right:16, bottom:32, left:36 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+  const n = barData.length;
+  const maxVal = Math.max(...barData.map(d=>d.value), ...lineData.map(d=>d.value), 1);
+  const bw = Math.max(8, cW / n - 6);
+
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('height', H);
+  window._chartData = window._chartData || {};
+  window._chartData[svgId] = barData;
+
+  let out = '<line class="chart-axis" x1="' + pad.left + '" y1="' + (pad.top+cH) + '" x2="' + (W-pad.right) + '" y2="' + (pad.top+cH) + '"/>';
+  for (let i=1;i<=4;i++) {
+    const y = pad.top + cH - (cH*i/4);
+    out += '<line class="chart-gridline" x1="' + pad.left + '" y1="' + y.toFixed(1) + '" x2="' + (W-pad.right) + '" y2="' + y.toFixed(1) + '"/>';
+    out += '<text class="chart-label" x="' + (pad.left-4) + '" y="' + (y+3).toFixed(1) + '" text-anchor="end">' + Math.round(maxVal*i/4) + '</text>';
+  }
+
+  // Bars (ingresos)
+  barData.forEach((d, i) => {
+    const bh = Math.max(2, (d.value/maxVal)*cH);
+    const cx = pad.left + i*(cW/n) + (cW/n)/2;
+    const x = cx - bw/2;
+    const y = pad.top + cH - bh;
+    out += '<rect class="chart-bar" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="var(--c-accent)" opacity=".85" onclick="onChartSegClick(\'' + svgId + '\',' + i + ')" style="cursor:pointer"><title>' + d.label + ': ' + d.value + ' ingresos</title></rect>';
+    if (d.value > 0) out += '<text class="chart-value" x="' + cx.toFixed(1) + '" y="' + (y-3).toFixed(1) + '" text-anchor="middle">' + d.value + '</text>';
+    out += '<text class="chart-label" x="' + cx.toFixed(1) + '" y="' + (H-pad.bottom+13) + '" text-anchor="middle">' + String(d.label).slice(-2) + '</text>';
+  });
+
+  // Dotted line (bajas)
+  const pts = lineData.map((d,i) => ({
+    x: pad.left + i*(cW/n) + (cW/n)/2,
+    y: pad.top + cH - (d.value/maxVal)*cH,
+    v: d.value
+  }));
+  if (pts.length > 1) {
+    const lineD = pts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    out += '<path d="' + lineD + '" fill="none" stroke="#e53935" stroke-width="2" stroke-dasharray="4 3" opacity=".8"/>';
+  }
+  pts.forEach(p => {
+    if (p.v > 0) {
+      out += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#e53935" stroke="var(--c-card)" stroke-width="2" opacity=".9"><title>' + p.v + ' bajas</title></circle>';
+    }
+  });
+
+  svg.innerHTML = out;
+}
+
 function makeLineChart(svgId, data, color) {
   const svg = document.getElementById(svgId);
   if (!svg) return;
