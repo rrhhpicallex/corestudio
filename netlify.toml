@@ -1,0 +1,32 @@
+[build]
+  publish = "."
+
+# ─── Variables de entorno ─────────────────────────────
+# Configurá SUPABASE_URL, SUPABASE_ANON_KEY y ANTHROPIC_API_KEY
+# en Netlify Dashboard → Site Settings → Environment Variables
+# NO las pongas acá directamente
+
+# ─── Headers de seguridad ─────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Permite llamadas a Supabase y Anthropic desde el browser
+    Content-Security-Policy = """
+      default-src 'self' 'unsafe-inline' 'unsafe-eval';
+      connect-src 'self'
+        https://*.supabase.co
+        https://api.anthropic.com
+        https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob:;
+      font-src 'self' https://fonts.gstatic.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    """
+
+# ─── SPA redirect ─────────────────────────────────────
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
