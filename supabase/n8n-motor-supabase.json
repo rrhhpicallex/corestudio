@@ -1,0 +1,413 @@
+{
+  "name": "HR- Motor (Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://qzcdwtdmcpcakebfkwkm.supabase.co/rest/v1/employees?select=*&order=name",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.value }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.value }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "647db6c2-97e8-4b34-9b50-11a955378fe1",
+      "name": "Leer Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        64,
+        512
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR_CON_TU_CREDENTIAL_ID",
+          "name": "Supabase Service Role Key"
+        }
+      },
+      "notes": "Usar el SERVICE ROLE KEY de Supabase (Settings → API → service_role), NO el anon key. El service role bypassa RLS y permite leer key_talent."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee el padrón desde Supabase (Core Studio).\n// Supabase devuelve un array JSON plano, sin paginación (todos los empleados en una sola llamada).\n// Campos nuevos disponibles: probation_end_date, probation_status, manager_email,\n// manager_since_date, key_talent, company, termination_date, termination_type.\n\nconst vistos = new Set();\nconst personas = [];\n\nfor (const item of $input.all()) {\n  const body = item.json;\n  // Supabase devuelve array directo (no anidado en .data)\n  const lista = Array.isArray(body) ? body : [body];\n\n  for (const e of lista) {\n    if (!e || typeof e !== 'object' || !e.id || vistos.has(String(e.id))) continue;\n    vistos.add(String(e.id));\n\n    const activo = e.status === 'active';\n\n    personas.push({ json: {\n      codigo:           String(e.id),\n      nombre:           e.name || 'Sin nombre',\n      equipo:           e.dept || 'Sin equipo',\n      empresa:          e.company || 'PicallEx',\n      lider:            e.manager_email || null,\n      fecha_ingreso:    e.hire_date || null,\n      fecha_fin_prueba: e.probation_end_date || null,\n      estado_prueba:    e.probation_status || null,\n      fecha_cambio_lider: e.manager_since_date || null,\n      talento_clave:    e.key_talent === true,\n      fecha_baja:       e.termination_date || null,\n      tipo_baja:        e.termination_type || null,\n      activo,\n    } });\n  }\n}\n\nreturn personas;\n"
+      },
+      "id": "3ad52271-bbb3-4ee8-a2af-1e5f703d5d15",
+      "name": "Armar padrón",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "e9f01c3f-f307-4843-a689-8744abf1f054",
+              "leftValue": "={{ $('Día 1 de cada mes 10:00').isExecuted }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "6cca9c79-4ece-4eac-8718-09bdb8832ce3",
+      "name": "¿Es el informe mensual?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "6873f439-eccc-4efd-aed3-8f154015075a",
+              "leftValue": "={{ $('Cada lunes 10:00').isExecuted }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "174e06db-83d4-44f2-9953-df678f1f35b4",
+      "name": "¿Es el resumen del lunes?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Informe mensual por equipo.\n// Se informa el mes anterior y se anticipa el mes que empieza.\n// Guarda una \"foto\" del equipo (solo código, equipo y líder) para comparar el mes siguiente.\n// La foto solo se guarda cuando el flujo corre solo (activo), no en las pruebas manuales.\n\nconst hoy = $now.startOf('day');\nconst mesInforme = hoy.minus({ months: 1 });\nconst inicio = mesInforme.startOf('month'), fin = mesInforme.endOf('month');\nconst proxInicio = hoy.startOf('month'), proxFin = hoy.endOf('month');\nconst nombreMes = d => d.setLocale('es').toFormat('LLLL');\nconst num = x => x.toFixed(1).replace('.', ',');\nconst entre = (d, a, b) => d && d >= a && d <= b;\n\nconst personas = $input.all().map(i => i.json).filter(p => p.activo !== false && p.fecha_ingreso);\n\nconst equipos = {};\nconst eq = n => (equipos[n] ??= { n: 0, ingresos: 0, antig: 0, prueba: 0, finPrueba: 0, aniv: 0, bajas: 0, var: null });\n\nfor (const p of personas) {\n  const e = eq(p.equipo);\n  const ingreso = DateTime.fromISO(String(p.fecha_ingreso).slice(0, 10));\n  e.n++;\n  e.antig += hoy.diff(ingreso, 'years').years;\n  if (entre(ingreso, inicio, fin)) e.ingresos++;\n  if (p.fecha_fin_prueba) {\n    const fp = DateTime.fromISO(String(p.fecha_fin_prueba).slice(0, 10));\n    if (fp >= hoy) e.prueba++;\n    if (entre(fp, proxInicio, proxFin)) e.finPrueba++;\n  }\n  for (const n of [1, 2]) if (entre(ingreso.plus({ years: n }), proxInicio, proxFin)) e.aniv++;\n}\n\n// Comparación con la foto del mes anterior\nconst store = $getWorkflowStaticData('global');\nconst anterior = store.foto || null;\nconst actual = Object.fromEntries(personas.map(p => [p.codigo, { equipo: p.equipo, lider: p.lider }]));\nlet cambiosEquipo = 0, cambiosLider = 0;\n\nif (anterior) {\n  const prevPorEquipo = {};\n  for (const [cod, a] of Object.entries(anterior)) {\n    prevPorEquipo[a.equipo] = (prevPorEquipo[a.equipo] || 0) + 1;\n    const b = actual[cod];\n    if (!b) eq(a.equipo).bajas++;\n    else {\n      if (a.equipo !== b.equipo) cambiosEquipo++;\n      if (a.lider && b.lider && a.lider !== b.lider) cambiosLider++;\n    }\n  }\n  for (const [nombre, e] of Object.entries(equipos)) e.var = e.n - (prevPorEquipo[nombre] || 0);\n}\nstore.foto = actual;\nstore.fecha = hoy.toISODate();\n\n// Equipos de menos de 5 personas se agrupan en \"Otros equipos\", para no exponer a nadie\nconst MIN_EQUIPO = 5;\nconst otros = { n: 0, ingresos: 0, antig: 0, prueba: 0, finPrueba: 0, aniv: 0, bajas: 0, var: anterior ? 0 : null, cuantos: 0 };\nconst visibles = [];\nfor (const [nombre, e] of Object.entries(equipos)) {\n  if (e.n === 0 && e.bajas === 0) continue;\n  if (e.n >= MIN_EQUIPO) { visibles.push([nombre, e]); continue; }\n  for (const k of ['n', 'ingresos', 'antig', 'prueba', 'finPrueba', 'aniv', 'bajas']) otros[k] += e[k];\n  if (anterior && e.var !== null) otros.var += e.var;\n  otros.cuantos++;\n}\nvisibles.sort((a, b) => b[1].n - a[1].n);\n\n// Armado del mensaje\nconst lista = otros.cuantos ? [...visibles, [`Otros equipos (${otros.cuantos} equipos chicos)`, otros]] : visibles;\nconst tot = lista.reduce((t, [, e]) => ({ n: t.n + e.n, ing: t.ing + e.ingresos, baj: t.baj + e.bajas, ant: t.ant + e.antig }), { n: 0, ing: 0, baj: 0, ant: 0 });\nconst signo = v => v === null ? '' : v > 0 ? ` (+${v})` : v < 0 ? ` (${v})` : ' (=)';\nconst plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;\n\nconst lineas = lista.map(([nombre, e]) =>\n  `• *${nombre}* · ${plural(e.n, 'persona', 'personas')}${signo(e.var)} · ${plural(e.ingresos, 'ingreso', 'ingresos')}` +\n  (anterior ? ` · ${plural(e.bajas, 'baja', 'bajas')}` : '') +\n  (e.n ? ` · ${num(e.antig / e.n)} años promedio` : '') + (e.prueba ? ` · ${e.prueba} en prueba` : ''));\n\nconst proximos = [];\nconst fp = lista.filter(([, e]) => e.finPrueba).map(([n, e]) => `${n} ${e.finPrueba}`);\nconst an = lista.filter(([, e]) => e.aniv).map(([n, e]) => `${n} ${e.aniv}`);\nif (fp.length) proximos.push(`• Terminan períodos de prueba: ${fp.join(', ')}`);\nif (an.length) proximos.push(`• Aniversarios de 1 o 2 años: ${an.join(', ')}`);\n\nlet m = `*Lectura de equipos · ${nombreMes(mesInforme)} ${mesInforme.year}*\\n_Datos de Core Studio (Supabase) al ${hoy.toFormat('dd/MM')}._\\n\\n`;\nm += `*Total: ${plural(tot.n, 'persona', 'personas')}* · ${plural(tot.ing, 'ingreso', 'ingresos')} en el mes` +\n  (anterior ? ` · ${plural(tot.baj, 'baja', 'bajas')}` : '') + ` · ${num(tot.ant / tot.n)} años de antigüedad promedio\\n\\n`;\nm += `*Por equipo*\\n${lineas.join('\\n')}\\n\\n`;\nif (anterior && (cambiosEquipo || cambiosLider)) {\n  m += `*Cambios en la estructura*\\n• ${plural(cambiosEquipo, 'persona cambió', 'personas cambiaron')} de equipo · ${plural(cambiosLider, 'persona cambió', 'personas cambiaron')} de líder\\n\\n`;\n}\nm += `*Para tener en cuenta en ${nombreMes(hoy)}*\\n${proximos.length ? proximos.join('\\n') : '• Sin hitos en el mes.'}\\n\\n`;\nm += anterior\n  ? '_Tu parte para el Directorio: tres hallazgos y una decisión a pedir._'\n  : '_Primer informe: queda como punto de partida. Desde el próximo se suman bajas, variaciones y cambios de estructura._';\n\nreturn [{ json: { mensaje: m, personas: tot.n } }];"
+      },
+      "id": "6fa2c939-07ba-419e-aeec-ff5a1d26bf52",
+      "name": "Calcular informe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resumen del lunes: lo que pasa esta semana y la próxima, ordenado según quién actúa.\n// Llega siempre, aunque no haya nada: es la base de la charla de 15 minutos con Zoe.\nconst MS_DIA = 86400000;\nconst hoy = Date.parse($now.toISODate());\n\nfunction sumarMeses(iso, meses) {\n  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);\n  const base = new Date(Date.UTC(y, m - 1 + meses, 1));\n  const ultimoDia = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)).getUTCDate();\n  return Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), Math.min(d, ultimoDia));\n}\nconst fecha = ms => { const d = new Date(ms); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0'); };\n\nconst hitos = [], ingresos = [];\nfor (const item of $input.all()) {\n  const p = item.json;\n  if (p.activo === false || !p.fecha_ingreso) continue;\n  const ingreso = Date.parse(String(p.fecha_ingreso).slice(0, 10));\n\n  const cand = [1, 2].map(n => ({ fecha: sumarMeses(p.fecha_ingreso, 12 * n), texto: `cumple ${n} ${n === 1 ? 'año' : 'años'}`, quien: 'Zoe', accion: 'charla de crecimiento en la entrevista mensual' }));\n  const finPrueba = p.fecha_fin_prueba ? Date.parse(String(p.fecha_fin_prueba).slice(0, 10)) : null;\n  if (finPrueba) cand.push({ fecha: finPrueba, texto: 'termina su período de prueba', quien: 'Georgi', accion: 'decidir con el líder si continúa' });\n\n  for (const c of cand) {\n    const faltan = Math.round((c.fecha - hoy) / MS_DIA);\n    if (faltan >= 0 && faltan <= 13) hitos.push({ ...c, faltan, nombre: p.nombre, equipo: p.equipo });\n  }\n  const hace = Math.round((hoy - ingreso) / MS_DIA);\n  if (hace >= 0 && hace <= 28) ingresos.push({ nombre: p.nombre, equipo: p.equipo, fecha: ingreso });\n}\n\nhitos.sort((a, b) => a.faltan - b.faltan || a.nombre.localeCompare(b.nombre));\ningresos.sort((a, b) => b.fecha - a.fecha);\nconst linea = h => `• ${fecha(h.fecha)} · *${h.nombre}* (${h.equipo}): ${h.texto} → ${h.quien}: ${h.accion}`;\nconst estaSemana = hitos.filter(h => h.faltan <= 6), proxima = hitos.filter(h => h.faltan >= 7);\nconst deGeorgi = estaSemana.filter(h => h.quien === 'Georgi').length, deZoe = estaSemana.filter(h => h.quien === 'Zoe').length;\n\nlet m = `*Resumen de la semana · ${fecha(hoy)}*\\n\\n`;\nm += `*Esta semana*\\n${estaSemana.length ? estaSemana.map(linea).join('\\n') : '• Sin hitos.'}\\n\\n`;\nm += `*La semana que viene*\\n${proxima.length ? proxima.map(linea).join('\\n') : '• Sin hitos.'}\\n\\n`;\nif (ingresos.length) m += `*Ingresos de las últimas 4 semanas* (primer mes: seguimiento cercano)\\n${ingresos.map(i => `• *${i.nombre}* (${i.equipo}) · ingresó el ${fecha(i.fecha)}`).join('\\n')}\\n\\n`;\nm += `*Para la charla con Zoe*\\n` + (estaSemana.length\n  ? `${estaSemana.length} ${estaSemana.length === 1 ? 'cosa' : 'cosas'} para esta semana: ${deGeorgi} a cargo de Georgi, ${deZoe} a cargo de Zoe.`\n  : 'Semana tranquila: buen momento para adelantar entrevistas mensuales.');\nm += `\\n\\n_Próximamente en este resumen: pedidos de charla de Pulse, alertas y plazos vencidos._`;\n\nreturn [{ json: { mensaje: m } }];\n"
+      },
+      "id": "e8251895-7aca-4a19-b52a-f0c1981f1537",
+      "name": "Armar resumen del lunes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detecta hitos del padrón y arma un solo mensaje.\n//\n// Cuando lo ejecutás a mano, muestra TODOS los hitos de los próximos 60 días (modo prueba).\n// Cuando corre solo, avisa cada hito dos veces: con 21 y con 7 días de anticipación.\nconst MODO_PRUEBA = typeof $execution !== 'undefined' && $execution.mode !== 'production';\n\nconst DIAS_AVISO = [21, 7];\nconst VENTANA_PRUEBA = 60;\nconst ANIVERSARIOS = [1, 2]; // años\nconst MS_DIA = 86400000;\n\nconst hoy = Date.parse($now.toISODate());\n\nfunction sumarMeses(iso, meses) {\n  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);\n  const base = new Date(Date.UTC(y, m - 1 + meses, 1));\n  const ultimoDia = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)).getUTCDate();\n  return Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), Math.min(d, ultimoDia));\n}\nconst fecha = ms => {\n  const d = new Date(ms);\n  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0');\n};\n\nconst hitos = [];\nlet activos = 0, sinFecha = 0;\n\nfor (const item of $input.all()) {\n  const p = item.json;\n  if (p.activo === false) continue;\n  activos++;\n  if (!p.fecha_ingreso) { sinFecha++; continue; }\n\n  const candidatos = ANIVERSARIOS.map(n => ({\n    fecha: sumarMeses(p.fecha_ingreso, 12 * n),\n    texto: `cumple ${n} ${n === 1 ? 'año' : 'años'} en la empresa`,\n  }));\n  if (p.fecha_fin_prueba) {\n    candidatos.push({ fecha: Date.parse(String(p.fecha_fin_prueba).slice(0, 10)), texto: 'termina su período de prueba' });\n  }\n  if (p.fecha_cambio_lider) {\n    candidatos.push({ fecha: Date.parse(String(p.fecha_cambio_lider).slice(0, 10)) + 30 * MS_DIA, texto: 'cumple 30 días con su nuevo líder' });\n  }\n\n  for (const c of candidatos) {\n    const faltan = Math.round((c.fecha - hoy) / MS_DIA);\n    const entra = MODO_PRUEBA ? (faltan >= 0 && faltan <= VENTANA_PRUEBA) : DIAS_AVISO.includes(faltan);\n    if (entra) hitos.push({ faltan, fecha: c.fecha, nombre: p.nombre, equipo: p.equipo, clave: p.talento_clave === true, texto: c.texto });\n  }\n}\n\nhitos.sort((a, b) => a.faltan - b.faltan || a.nombre.localeCompare(b.nombre));\nconst linea = h => `• ${fecha(h.fecha)} · *${h.nombre}* (${h.equipo})${h.clave ? ' · talento clave' : ''}: ${h.texto}`;\n\nlet cuerpo;\nif (MODO_PRUEBA) {\n  cuerpo = `*Modo prueba · próximos ${VENTANA_PRUEBA} días*\\n` + (hitos.length ? hitos.map(linea).join('\\n') : 'Sin hitos en el período.') +\n    `\\n\\n_Personas activas leídas: ${activos}. Sin fecha de ingreso: ${sinFecha}._`;\n} else {\n  if (hitos.length === 0) return [];\n  const bloques = [];\n  for (const d of [7, 21]) {\n    const grupo = hitos.filter(h => h.faltan === d);\n    if (grupo.length) bloques.push(`*En ${d} días*\\n` + grupo.map(linea).join('\\n'));\n  }\n  cuerpo = bloques.join('\\n\\n');\n}\n\nconst mensaje = `*Hitos próximos · Recursos Humanos*\\n\\n${cuerpo}\\n\\n_Aviso automático desde Core Studio._`;\nreturn [{ json: { mensaje, cantidad: hitos.length, activos, sin_fecha: sinFecha } }];\n"
+      },
+      "id": "5bb9a9b2-0438-4895-baf8-0ccf47999b67",
+      "name": "Detectar hitos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U018S9LBF47",
+          "mode": "list",
+          "cachedResultName": "georgina"
+        },
+        "text": "={{ $json.mensaje }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "b5715838-2f1f-4a99-a92a-1fc5206c8e2d",
+      "name": "Enviar a Georgi",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        528
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "sVDUvVMPXq77jkIr",
+          "name": "Slack account 13"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Motor de Recursos Humanos — Core Studio\n**Fuente de datos:** Supabase (Core Studio) — ya NO lee PeopleForce.\n\n**Día 1 de cada mes:** informe por equipo.\n**Cada lunes:** resumen de la semana.\n**Todos los días:** avisos de hitos.\n\n**Credencial requerida:** HTTP Header Auth con el SERVICE ROLE KEY de Supabase\n(Supabase Dashboard → Settings → API → service_role secret)\n\n**Para configurar:**\n1. Crear credencial en n8n: Credentials → Add → Header Auth\n   - Name: apikey\n   - Value: [tu service_role key]\n2. Asignar esa credencial al nodo 'Leer Supabase'\n3. Ejecutar en modo prueba para verificar que llegan los datos",
+        "height": 280,
+        "width": 460
+      },
+      "id": "4106349e-be00-4959-bafd-ac588d7a8834",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "4a2ed576-53ea-4250-9162-5b83771294bf",
+      "name": "Todos los días 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 10,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "6fc5230c-808c-487a-8390-92ab03a7212b",
+      "name": "Cada lunes 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "87548b86-4732-401b-ae52-6b8e492fc8cc",
+      "name": "Día 1 de cada mes 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        704
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Leer Supabase": {
+      "main": [
+        [
+          {
+            "node": "Armar padrón",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar padrón": {
+      "main": [
+        [
+          {
+            "node": "¿Es el informe mensual?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es el informe mensual?": {
+      "main": [
+        [
+          {
+            "node": "Calcular informe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Es el resumen del lunes?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es el resumen del lunes?": {
+      "main": [
+        [
+          {
+            "node": "Armar resumen del lunes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Detectar hitos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular informe": {
+      "main": [
+        [
+          {
+            "node": "Enviar a Georgi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar resumen del lunes": {
+      "main": [
+        [
+          {
+            "node": "Enviar a Georgi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detectar hitos": {
+      "main": [
+        [
+          {
+            "node": "Enviar a Georgi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todos los días 10:00": {
+      "main": [
+        [
+          {
+            "node": "Leer Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cada lunes 10:00": {
+      "main": [
+        [
+          {
+            "node": "Leer Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Día 1 de cada mes 10:00": {
+      "main": [
+        [
+          {
+            "node": "Leer Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "supabase-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "core-studio-supabase"
+  },
+  "id": "XqbecLD8ljhLlBPl",
+  "tags": []
+}

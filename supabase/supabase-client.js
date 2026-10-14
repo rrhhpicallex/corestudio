@@ -23,11 +23,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ─── 3. Carga inicial — reemplaza el const DB = {...} hardcodeado ─
 async function loadDBFromSupabase() {
   try {
-    // Employees
+    // Employees — cargar todos (activos y terminados) para el filtro de directorio
     const { data: employees, error: empErr } = await supabaseClient
       .from('employees')
       .select('*')
-      .eq('status', 'active')
       .order('name');
     if (empErr) throw empErr;
 
@@ -51,6 +50,7 @@ async function loadDBFromSupabase() {
         status:   r.status,
         reviewer: r.reviewer,
         note:     r.note,
+        cert_url: r.cert_url || null,
         ts:       r.ts,
       });
     });
@@ -134,8 +134,31 @@ async function saveLeaveRequestToSupabase(req, empId) {
       days:      req.days,
       status:    req.status,
       note:      req.note,
+      cert_url:  req.cert_url || null,
     });
   if (error) console.error('Error guardando licencia:', error);
+}
+
+// ─── 7. Subir certificado médico ──────────────────────────────
+async function uploadCertificateToSupabase(leaveId, file) {
+  const ext = file.name.split('.').pop();
+  const path = `${leaveId}.${ext}`;
+  const { error: upErr } = await supabaseClient.storage
+    .from('certificates')
+    .upload(path, file, { upsert: true });
+  if (upErr) { console.error('Error subiendo certificado:', upErr); return null; }
+  // El bucket es privado: devuelve path para referencia interna
+  return path;
+}
+
+// ─── 8. Actualizar empleado ───────────────────────────────────
+async function updateEmployeeInSupabase(empId, fields) {
+  const { error } = await supabaseClient
+    .from('employees')
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq('id', empId);
+  if (error) console.error('Error actualizando empleado:', error);
+  return !error;
 }
 
 // ─── 6. Subir foto de perfil ──────────────────────────────────

@@ -3842,6 +3842,41 @@ a { color: inherit; text-decoration: none; }
             Nueva solicitud
           </button>
         </div>
+        <!-- FILTER BAR: Licencias -->
+        <div class="adv-filter-bar" id="lic-filter-bar" style="margin-bottom:16px;border-radius:var(--radius);border:1px solid var(--c-border)">
+          <div class="dir-search" style="flex:1;min-width:180px;max-width:280px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="lic-f-name" placeholder="Buscar colaborador..." oninput="filterLicencias()"/>
+          </div>
+          <select class="filter-select" id="lic-f-type" onchange="filterLicencias()">
+            <option value="">Tipo</option>
+            <option>Vacaciones</option>
+            <option>Extra Day</option>
+            <option>Enfermedad</option>
+            <option>Mudanza</option>
+            <option>Día de Cumpleaños</option>
+            <option>Chequeate/Tramitate</option>
+            <option>Licencia Especial</option>
+            <option>Final Days</option>
+            <option>Maternidad</option>
+          </select>
+          <select class="filter-select" id="lic-f-status" onchange="filterLicencias()">
+            <option value="">Estado</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="rechazado">Rechazado</option>
+          </select>
+          <select class="filter-select" id="lic-f-dept" onchange="filterLicencias()">
+            <option value="">Área</option>
+          </select>
+          <div class="filter-date-group">
+            <span class="filter-date-label">Desde</span>
+            <input type="date" class="filter-date-input" id="lic-f-from" onchange="filterLicencias()"/>
+            <span class="filter-date-label">Hasta</span>
+            <input type="date" class="filter-date-input" id="lic-f-to" onchange="filterLicencias()"/>
+          </div>
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="clearLicFilters()">Limpiar</button>
+        </div>
         <div id="global-leave-content"><!-- dynamic --></div>
       </div>
 
@@ -4820,6 +4855,96 @@ function renderGlobalLeave() {
   </div>`;
 
   document.getElementById('global-leave-content').innerHTML = html;
+
+  // Populate dept filter from DB on first render
+  const deptSel = document.getElementById('lic-f-dept');
+  if (deptSel && deptSel.options.length <= 1) {
+    const depts = [...new Set(DB.employees.map(e => e.dept || e.department || e.area).filter(Boolean))].sort();
+    depts.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; deptSel.appendChild(o); });
+  }
+}
+
+/* ─── LICENCIAS FILTERS ─────────────────────────────── */
+function filterLicencias() {
+  const nameQ  = (document.getElementById('lic-f-name')?.value || '').toLowerCase().trim();
+  const typeQ  = (document.getElementById('lic-f-type')?.value || '').toLowerCase();
+  const statQ  = (document.getElementById('lic-f-status')?.value || '').toLowerCase();
+  const deptQ  = (document.getElementById('lic-f-dept')?.value || '').toLowerCase();
+  const fromQ  = document.getElementById('lic-f-from')?.value || '';
+  const toQ    = document.getElementById('lic-f-to')?.value || '';
+
+  // Gather all leave requests with employee metadata
+  const allReqs = DB.employees.flatMap(e =>
+    (e.leave_requests || []).map(r => ({
+      ...r,
+      emp_name: e.name, emp_initials: e.initials, emp_color: e.color,
+      emp_id: e.id,
+      emp_dept: (e.dept || e.department || e.area || '').toLowerCase()
+    }))
+  ).sort((a, b) => b.ts.localeCompare(a.ts));
+
+  const filtered = allReqs.filter(r => {
+    if (nameQ  && !(r.emp_name || '').toLowerCase().includes(nameQ)) return false;
+    if (typeQ  && (r.type || '').toLowerCase() !== typeQ) return false;
+    if (statQ  && (r.status || '').toLowerCase() !== statQ) return false;
+    if (deptQ  && r.emp_dept !== deptQ) return false;
+    if (fromQ  && r.from && r.from < fromQ) return false;
+    if (toQ    && r.to   && r.to   > toQ)   return false;
+    return true;
+  });
+
+  const pending = filtered.filter(r => r.status === 'pendiente');
+  const rest    = filtered.filter(r => r.status !== 'pendiente');
+
+  const rowHtml = (r, showReviewer) => `<tr>
+    <td onclick="openProfile('${r.emp_id}')" style="cursor:pointer">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:26px;height:26px;border-radius:6px;background:${r.emp_color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${r.emp_initials}</div>
+        <span style="font-weight:600">${r.emp_name}</span>
+      </div>
+    </td>
+    <td><span class="chip" style="font-size:11px">${r.type}</span></td>
+    <td class="text-mono" style="font-size:12px">${fmtDateShort(r.from)}</td>
+    <td class="text-mono" style="font-size:12px">${fmtDateShort(r.to)}</td>
+    <td><strong>${r.days}</strong></td>
+    <td><span class="status-chip ${r.status}"><span class="status-dot"></span>${capitalize(r.status)}</span></td>
+    <td>${showReviewer
+      ? `<span style="font-size:12px">${r.reviewer || ''}</span>`
+      : `<div class="audit-trail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${r.ts}</div>`
+    }</td>
+  </tr>`;
+
+  let html = '';
+  if (pending.length > 0) {
+    html += `<div style="margin-bottom:24px">
+      <div class="section-header"><div class="section-title">Pendientes de aprobación <span style="background:var(--c-accent);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:8px">${pending.length}</span></div></div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="request-table"><thead><tr>
+          <th>Colaborador</th><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th><th>Log</th>
+        </tr></thead><tbody>${pending.map(r => rowHtml(r, false)).join('')}</tbody></table>
+      </div></div>`;
+  }
+  html += `<div>
+    <div class="section-header"><div class="section-title">Historial completo${rest.length === 0 && pending.length === 0 ? '' : ''}</div></div>
+    ${rest.length === 0 && pending.length === 0
+      ? `<div class="card" style="padding:28px;text-align:center;color:var(--c-muted);font-size:14px">Sin resultados para los filtros seleccionados.</div>`
+      : `<div class="card" style="padding:0;overflow:hidden">
+          <table class="request-table"><thead><tr>
+            <th>Colaborador</th><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th><th>Revisado por</th>
+          </tr></thead><tbody>${rest.map(r => rowHtml(r, true)).join('')}</tbody></table>
+        </div>`
+    }
+  </div>`;
+
+  document.getElementById('global-leave-content').innerHTML = html;
+}
+
+function clearLicFilters() {
+  ['lic-f-name','lic-f-type','lic-f-status','lic-f-dept','lic-f-from','lic-f-to'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  renderGlobalLeave();
 }
 
 /* ═══════════════════════════════════════════════════
