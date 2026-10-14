@@ -2974,6 +2974,88 @@ a { color: inherit; text-decoration: none; }
   padding-bottom: 6px;
 }
 
+/* ═══════════════════════════════════════════════════
+   TOOLTIP SYSTEM — [data-tip] attribute
+   Usage: <span data-tip="texto del tooltip">...</span>
+   Add data-tip-left, data-tip-top, data-tip-right for position
+═══════════════════════════════════════════════════ */
+[data-tip] {
+  position: relative;
+  cursor: default;
+}
+[data-tip]::before {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1f2e;
+  color: #f0f4ff;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: pre-line;
+  max-width: 240px;
+  width: max-content;
+  padding: 7px 11px;
+  border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.22);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s, transform .15s;
+  z-index: 9999;
+  text-align: left;
+  letter-spacing: 0;
+}
+[data-tip]::after {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1a1f2e;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+  z-index: 9999;
+}
+[data-tip]:hover::before,
+[data-tip]:hover::after { opacity: 1; }
+/* Left-anchored tooltip */
+[data-tip-pos="left"]::before { left: 0; transform: none; }
+[data-tip-pos="left"]::after  { left: 16px; transform: none; }
+/* Right-anchored tooltip */
+[data-tip-pos="right"]::before { left: auto; right: 0; transform: none; }
+[data-tip-pos="right"]::after  { left: auto; right: 16px; transform: none; }
+/* Bottom tooltip */
+[data-tip-pos="bottom"]::before {
+  bottom: auto; top: calc(100% + 7px);
+  transform: translateX(-50%);
+}
+[data-tip-pos="bottom"]::after {
+  bottom: auto; top: calc(100% + 1px);
+  border-top-color: transparent; border-bottom-color: #1a1f2e;
+  transform: translateX(-50%);
+}
+/* Tooltip helper header class */
+.th-tip {
+  display: inline-flex; align-items: center; gap: 4px;
+  cursor: pointer; user-select: none;
+}
+.th-tip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--c-border); color: var(--c-muted);
+  font-size: 9px; font-weight: 800; font-style: normal;
+  flex-shrink: 0; margin-left: 2px;
+}
+/* Negative days explanation badge */
+.neg-days-cell {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-weight: 700;
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -3811,12 +3893,12 @@ a { color: inherit; text-decoration: none; }
         </div>
         <!-- TIPO DE LICENCIA FILTER -->
         <div class="cal-type-filter" id="cal-type-filters">
-          <button class="type-chip tc-all active" data-type="all" onclick="setCalTypeFilter('all',this)">Todos los tipos</button>
-          <button class="type-chip tc-vac" data-type="vac" onclick="setCalTypeFilter('vac',this)">✈️ Vacaciones</button>
-          <button class="type-chip tc-sick" data-type="sick" onclick="setCalTypeFilter('sick',this)">💊 Enfermedad</button>
-          <button class="type-chip tc-extra" data-type="extra" onclick="setCalTypeFilter('extra',this)">🏖️ Extra Day</button>
-          <button class="type-chip tc-mat" data-type="mat" onclick="setCalTypeFilter('mat',this)">👶 Mat./Pat.</button>
-          <button class="type-chip tc-bday" data-type="bday" onclick="setCalTypeFilter('bday',this)">🎂 Cumpleaños</button>
+          <button class="type-chip tc-all active" data-type="all" data-tip="Mostrá todos los tipos de ausencias en el calendario." onclick="setCalTypeFilter('all',this)">Todos los tipos</button>
+          <button class="type-chip tc-vac" data-type="vac" data-tip="Vacaciones anuales pagas según antigüedad.\n14d · 21d · 28d · 35d (AR) · 15d hábiles (COL)." onclick="setCalTypeFilter('vac',this)">✈️ Vacaciones</button>
+          <button class="type-chip tc-sick" data-type="sick" data-tip="Ausencias por enfermedad o salud.\nRequieren certificado médico en las primeras 48h." onclick="setCalTypeFilter('sick',this)">💊 Enfermedad</button>
+          <button class="type-chip tc-extra" data-type="extra" data-tip="Extra Day: beneficio PicallEx de un día libre extra por año.\nNo acumulable. Se pierde si no se usa." onclick="setCalTypeFilter('extra',this)">🏖️ Extra Day</button>
+          <button class="type-chip tc-mat" data-type="mat" data-tip="Licencia de maternidad o paternidad.\nSe configura según ley vigente en cada país." onclick="setCalTypeFilter('mat',this)">👶 Mat./Pat.</button>
+          <button class="type-chip tc-bday" data-type="bday" data-tip="Día libre en el cumpleaños del colaborador.\nBeneficio PicallEx: tomalo el día o la semana de tu cumpleaños." onclick="setCalTypeFilter('bday',this)">🎂 Cumpleaños</button>
         </div>
         <div class="card" style="overflow-x:auto; padding:20px">
           <div id="gantt-container"><!-- dynamic --></div>
@@ -4025,30 +4107,38 @@ a { color: inherit; text-decoration: none; }
             <!-- Tabla de colaboradores -->
             <!-- FILTERS -->
             <div class="policy-filter-row">
-              <select id="pf-area" onchange="renderPolicyTable()">
-                <option value="">Todas las áreas</option>
-                <option>Desarrollo</option><option>CX</option><option>C2R</option>
-                <option>RRHH</option><option>Administración/Billing</option>
-                <option>Marketing</option><option>Artes</option>
-                <option>Finanzas</option><option>Comercial</option><option>Legales</option>
-              </select>
-              <select id="pf-antiguedad" onchange="renderPolicyTable()">
-                <option value="">Toda la antigüedad</option>
-                <option value="0-5">0 – 5 años (14d)</option>
-                <option value="5-10">5 – 10 años (21d)</option>
-                <option value="10-20">10 – 20 años (28d)</option>
-                <option value="20+">20+ años (35d)</option>
-                <option value="col">Colombia (15d)</option>
-              </select>
-              <select id="pf-politica" onchange="renderPolicyTable()">
-                <option value="">Toda la política</option>
-                <option value="full">Completo (ingresó 1er sem)</option>
-                <option value="prop">Proporcional (ingresó 2do sem)</option>
-              </select>
-              <select id="pf-alerta" onchange="renderPolicyTable()">
-                <option value="">Todos</option>
-                <option value="alerta">⚠️ Solo con días acumulados</option>
-              </select>
+              <span data-tip="Filtrá por departamento o área de la empresa." style="cursor:default">
+                <select id="pf-area" onchange="renderPolicyTable()">
+                  <option value="">Todas las áreas</option>
+                  <option>Desarrollo</option><option>CX</option><option>C2R</option>
+                  <option>RRHH</option><option>Administración/Billing</option>
+                  <option>Marketing</option><option>Artes</option>
+                  <option>Finanzas</option><option>Comercial</option><option>Legales</option>
+                </select>
+              </span>
+              <span data-tip="Tramo de antigüedad al 1° de octubre del año en curso.\nDetermina cuántos días de vacaciones anuales le corresponden.\n0–5 años → 14d · 5–10 → 21d · 10–20 → 28d · 20+ → 35d\nColombia → 15d hábiles (régimen diferente)." style="cursor:default">
+                <select id="pf-antiguedad" onchange="renderPolicyTable()">
+                  <option value="">Toda la antigüedad</option>
+                  <option value="0-5">0 – 5 años (14d)</option>
+                  <option value="5-10">5 – 10 años (21d)</option>
+                  <option value="10-20">10 – 20 años (28d)</option>
+                  <option value="20+">20+ años (35d)</option>
+                  <option value="col">Colombia (15d)</option>
+                </select>
+              </span>
+              <span data-tip="Política según semestre de ingreso.\n▸ Completo: ingresó antes del 1° de julio → goza el año completo de días.\n▸ Proporcional: ingresó en el 2do semestre → solo cobra los días proporcionales al tiempo trabajado en su primer año." style="cursor:default">
+                <select id="pf-politica" onchange="renderPolicyTable()">
+                  <option value="">Toda la política</option>
+                  <option value="full">Completo (ingresó 1er sem)</option>
+                  <option value="prop">Proporcional (ingresó 2do sem)</option>
+                </select>
+              </span>
+              <span data-tip="Muestra solo los colaboradores con alguna alerta:\n⚠️ Menos de 3 días disponibles en el período actual.\n⏰ Más de 12 meses sin tomar vacaciones (puede generar deuda laboral)." style="cursor:default">
+                <select id="pf-alerta" onchange="renderPolicyTable()">
+                  <option value="">Todos</option>
+                  <option value="alerta">⚠️ Solo con días acumulados</option>
+                </select>
+              </span>
               <div class="policy-legend">
                 <div class="policy-legend-item"><div class="policy-legend-dot" style="background:#e8f5e9;border:1px solid #1b5e20"></div>Completo</div>
                 <div class="policy-legend-item"><div class="policy-legend-dot" style="background:#fff8e1;border:1px solid #e65100"></div>Proporcional</div>
@@ -4059,13 +4149,27 @@ a { color: inherit; text-decoration: none; }
               <div style="overflow-x:auto">
                 <table class="policy-emp-table" id="policy-emp-table">
                   <thead><tr>
-                    <th style="padding:12px 16px;cursor:pointer" onclick="sortPolicyTable('name')">Empleado ↕</th>
-                    <th style="cursor:pointer" onclick="sortPolicyTable('tenure')">Antigüedad ↕</th>
-                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('days')">Días/año ↕</th>
-                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('vacUsed')">Tomados ↕</th>
-                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('usedThisYear')">Período 2026 ↕</th>
-                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('available')">Disponibles ↕</th>
-                    <th style="text-align:center">Alerta</th>
+                    <th style="padding:12px 16px;cursor:pointer" onclick="sortPolicyTable('name')">
+                      <span class="th-tip" data-tip="Nombre del colaborador activo y su área">Empleado ↕</span>
+                    </th>
+                    <th style="cursor:pointer" onclick="sortPolicyTable('tenure')">
+                      <span class="th-tip" data-tip="Tiempo desde la fecha de ingreso hasta hoy.\nDetermina el tramo de días que le corresponden según política PicallEx.">Antigüedad ↕<i class="th-tip-icon">?</i></span>
+                    </th>
+                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('days')">
+                      <span class="th-tip" data-tip="Días de vacaciones por año según tramo de antigüedad al 1° de octubre.\n0–5 años → 14d · 5–10 años → 21d · 10–20 años → 28d · 20+ años → 35d\nColombia: 15 días hábiles (Ley 186).">Días/año ↕<i class="th-tip-icon">?</i></span>
+                    </th>
+                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('vacUsed')">
+                      <span class="th-tip" data-tip="Total de días de Vacaciones aprobados en toda la historia del colaborador en PicallEx (todos los años sumados).">Tomados ↕<i class="th-tip-icon">?</i></span>
+                    </th>
+                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('usedThisYear')">
+                      <span class="th-tip" data-tip="Días de Vacaciones aprobados con fecha de inicio en 2026.\nNo incluye pendientes ni rechazados.">Período 2026 ↕<i class="th-tip-icon">?</i></span>
+                    </th>
+                    <th style="cursor:pointer;text-align:center" onclick="sortPolicyTable('available')">
+                      <span class="th-tip" data-tip="Días/año − días tomados en 2026.\nPuede ser negativo: la política permite adelantar vacaciones (saldo negativo) que se descuentan del siguiente período.\nEjemplo: −3d = tomó 3 días más de los que le corresponden en 2026.">Disponibles ↕<i class="th-tip-icon">?</i></span>
+                    </th>
+                    <th style="text-align:center">
+                      <span class="th-tip" data-tip="⚠️ Quedan menos de 3 días disponibles en 2026.\n⏰ Lleva más de 12 meses sin tomar vacaciones (días sin liquidar).">Alerta<i class="th-tip-icon">?</i></span>
+                    </th>
                   </tr></thead>
                   <tbody id="policy-emp-tbody"></tbody>
                 </table>
@@ -4706,19 +4810,33 @@ function renderLeaveTiles(e) {
     const pct = barMax > 0 ? Math.min(100, Math.round((data.used / barMax) * 100)) : 0;
     const availColor = avail !== null && avail < 0 ? '#e53935' : t.color;
 
+    // Build tooltip for available number
+    let availTip = '';
+    if (isUnlimited) {
+      availTip = 'Enfermedad no tiene límite de días en PicallEx.\nPresentá el certificado médico para justificar ausencias.';
+    } else if (t.key === 'vacaciones' && avail < 0) {
+      availTip = '⚠️ Saldo negativo: tomó más días de los que le corresponden en el período.\nLa política PicallEx permite adelantar vacaciones.\nEl saldo pendiente (${Math.abs(avail)}d) se descontará del siguiente período.'.replace('${Math.abs(avail)}d', Math.abs(avail) + 'd');
+    } else if (t.key === 'vacaciones') {
+      availTip = `${avail} días disponibles de ${data.total} totales.\n${data.used} ya utilizados · ${data.pending} pendiente de aprobación.\nHacé clic para solicitar vacaciones.`;
+    } else if (t.key === 'extra_day') {
+      availTip = `Extra Day: beneficio especial no acumulable.\n${avail} disponible${avail !== 1 ? 's' : ''} de ${data.total} asignados este año.\nHacé clic para solicitarlo.`;
+    } else if (t.key === 'maternidad') {
+      availTip = 'Licencia de maternidad/paternidad.\nActivala cuando corresponda. Los días se configuran según ley vigente.';
+    }
+
     return `
       <div class="leave-tile" style="border-top:3px solid ${t.color}" onclick="openLeaveModal('${t.key === 'extra_day' ? 'Extra Day' : t.label}')">
         <div class="lt-header">
           <div class="lt-type">${t.label}</div>
           <div class="lt-icon" style="background:${t.bg || t.color+'22'};color:${t.color}">${t.icon}</div>
         </div>
-        <div class="lt-big" style="color:${availColor}">${isUnlimited ? '∞' : avail}</div>
-        <div class="lt-sub">${isUnlimited ? 'días sin límite' : 'días disponibles'}</div>
+        <div class="lt-big" style="color:${availColor}" data-tip="${availTip.replace(/"/g, '&quot;')}">${isUnlimited ? '∞' : avail}</div>
+        <div class="lt-sub">${isUnlimited ? 'días sin límite' : (avail < 0 ? '⚠️ saldo negativo' : 'días disponibles')}</div>
         ${vacContext ? `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacContext}</div>` : ''}
         <div class="lt-bar"><div class="lt-bar-fill" style="width:${pct}%;background:${t.color}"></div></div>
         <div class="lt-legend">
-          <div class="lt-legend-item"><div class="lt-dot" style="background:${t.color}"></div>${data.used} usados</div>
-          <div class="lt-legend-item"><div class="lt-dot" style="background:#ffd54f"></div>${data.pending} pendiente</div>
+          <div class="lt-legend-item" data-tip="Días ya aprobados y gozados."><div class="lt-dot" style="background:${t.color}"></div>${data.used} usados</div>
+          <div class="lt-legend-item" data-tip="Días solicitados aún en revisión por el HR Lead."><div class="lt-dot" style="background:#ffd54f"></div>${data.pending} pendiente</div>
         </div>
       </div>
     `;
@@ -8272,22 +8390,48 @@ function renderPolicyTable() {
   const thisYear   = today.getFullYear();
 
   // Filters
-  const fArea   = document.getElementById('pf-area')?.value || '';
-  const fAlerta = document.getElementById('pf-alerta')?.value || '';
+  const fArea     = document.getElementById('pf-area')?.value     || '';
+  const fAntig    = document.getElementById('pf-antiguedad')?.value || '';
+  const fPolitica = document.getElementById('pf-politica')?.value  || '';
+  const fAlerta   = document.getElementById('pf-alerta')?.value    || '';
 
   // Active employees only (exclude terminated + inactivo)
   let emps = DB.employees.filter(e => !e.status || e.status === 'active');
   emps = emps.filter(e => e.status !== 'inactivo');
   if (fArea) emps = emps.filter(e => e.dept === fArea);
 
+  // Cutoff: 1° oct (for seniority tier)
+  let cutoff = new Date(today.getFullYear(), 9, 1);
+  if (cutoff > today) cutoff = new Date(today.getFullYear() - 1, 9, 1);
+
   // Build row data
   const rowData = emps.map(emp => {
-    const hireDate    = new Date(emp.hire_date);
-    const yearsTotal  = (today - hireDate) / msPerYear;
-    const yearsInt    = Math.floor(yearsTotal);
-    const monthsRem   = Math.floor((yearsTotal - yearsInt) * 12);
-    const days        = calcVacacionesPCX(emp);
-    const flagIcon    = emp.country === 'Argentina' ? '🇦🇷' : emp.country === 'Colombia' ? '🇨🇴' : '🇺🇸';
+    const hireDate      = new Date(emp.hire_date);
+    const yearsTotal    = (today - hireDate) / msPerYear;
+    const yearsAtCutoff = Math.max(0, Math.floor((cutoff - hireDate) / msPerYear));
+    const yearsInt      = Math.floor(yearsTotal);
+    const monthsRem     = Math.floor((yearsTotal - yearsInt) * 12);
+    const days          = calcVacacionesPCX(emp);
+    const country       = emp.country || 'Argentina';
+    const flagIcon      = country === 'Argentina' ? '🇦🇷' : country === 'Colombia' ? '🇨🇴' : '🇺🇸';
+
+    // ── Filter: antigüedad ──────────────────────────
+    if (fAntig) {
+      if (fAntig === 'col'   && country !== 'Colombia')                                         return null;
+      if (fAntig === '0-5'   && (country === 'Colombia' || yearsAtCutoff >= 5))                 return null;
+      if (fAntig === '5-10'  && (country === 'Colombia' || yearsAtCutoff < 5 || yearsAtCutoff >= 10))  return null;
+      if (fAntig === '10-20' && (country === 'Colombia' || yearsAtCutoff < 10 || yearsAtCutoff >= 20)) return null;
+      if (fAntig === '20+'   && (country === 'Colombia' || yearsAtCutoff < 20))                 return null;
+    }
+
+    // ── Filter: política (semestre ingreso) ─────────
+    if (fPolitica) {
+      const hiringMonth = parseInt(emp.hire_date.split('-')[1]);
+      const isColombia  = country === 'Colombia';
+      if (fPolitica === 'full' && (isColombia || hiringMonth >= 7))  return null;
+      if (fPolitica === 'prop' && (isColombia || hiringMonth < 7))   return null;
+      if (fPolitica === 'col'  && !isColombia)                       return null;
+    }
 
     // Tomados histórico
     const vacUsed = (emp.leave_requests || [])
@@ -8303,7 +8447,7 @@ function renderPolicyTable() {
     const available = days - usedThisYear;
 
     // Alerta
-    const lowBalance = available < 3 && yearsTotal > 0.08; // más de ~30 días en empresa
+    const lowBalance = available < 3 && yearsTotal > 0.08;
     const lastVac = (emp.leave_requests || [])
       .filter(r => r.status === 'aprobado' && r.type === 'Vacaciones')
       .sort((a,b) => b.from.localeCompare(a.from))[0];
@@ -8320,13 +8464,21 @@ function renderPolicyTable() {
     if (monthsRem > 0) tenureStr += (yearsInt > 0 ? ' ' : '') + monthsRem + 'm';
     if (!tenureStr) tenureStr = 'Nuevo';
 
+    // Antigüedad al corte
+    const tenureTipStr = yearsAtCutoff + ' año' + (yearsAtCutoff!==1?'s':'') + ' al 1° oct ' + cutoff.getFullYear()
+      + '\nIngresó: ' + emp.hire_date.split('-').reverse().join('/');
+
+    const hiringMonth = parseInt(emp.hire_date.split('-')[1]);
+    const polLabel = country === 'Colombia' ? 'COL · 15d hábiles'
+      : hiringMonth < 7 ? '1er sem · completo' : '2do sem · proporcional';
+
     let alertIcons = '';
-    if (lowBalance) alertIcons += '<span title="Quedan menos de 3 días disponibles" style="cursor:default">⚠️</span> ';
-    if (expiring) alertIcons += '<span title="Días sin usar que vencen (+12 meses sin vacaciones)" style="cursor:default">⏰</span>';
+    if (lowBalance) alertIcons += '<span data-tip="Le quedan ' + available + ' días en 2026 de ' + days + ' que le corresponden.\nConsiderá planificar vacaciones próximamente." style="cursor:default;font-size:16px">⚠️</span> ';
+    if (expiring)   alertIcons += '<span data-tip="Lleva ' + monthsSinceLastVac + ' meses sin tomar vacaciones.\nLos días acumulados sin liquidar pueden generar deuda laboral." style="cursor:default;font-size:16px">⏰</span>';
 
     return {
       emp, days, vacUsed, usedThisYear, available, hasAlert, alertIcons,
-      flagIcon, tenureStr, yearsTotal,
+      flagIcon, tenureStr, tenureTipStr, polLabel, yearsTotal, country,
       name: emp.name, tenure: yearsTotal
     };
   }).filter(Boolean);
@@ -8339,8 +8491,21 @@ function renderPolicyTable() {
     return _policySortAsc ? cmp : -cmp;
   });
 
-  const rows = rowData.map(({ emp, days, vacUsed, usedThisYear, available, hasAlert, alertIcons, flagIcon, tenureStr }) => {
+  const rows = rowData.map(({ emp, days, vacUsed, usedThisYear, available, hasAlert, alertIcons, flagIcon, tenureStr, tenureTipStr, polLabel, country }) => {
     const availColor = available < 0 ? '#c62828' : available < 3 ? '#e65100' : 'var(--c-accent)';
+
+    // Tooltip for available: explain negative
+    let availTip = '';
+    if (available < 0) {
+      availTip = 'Tomó ' + usedThisYear + 'd en ' + today.getFullYear() + ' pero le corresponden ' + days + 'd.\n'
+        + 'Saldo negativo de ' + Math.abs(available) + 'd: la política PicallEx\npermite adelantar vacaciones. Se descontará\ndel siguiente período.';
+    } else {
+      availTip = 'Le restan ' + available + 'd de los ' + days + 'd de su tramo.\n'
+        + 'Tomados en ' + today.getFullYear() + ': ' + usedThisYear + 'd.';
+    }
+
+    const daysClass = country === 'Colombia' ? 'days-badge days-col' : 'days-badge days-arg';
+
     return '<tr' + (hasAlert ? ' style="background:rgba(229,57,53,0.04)"' : '') + '>'
       // Empleado
       + '<td style="padding:10px 16px">'
@@ -8348,20 +8513,29 @@ function renderPolicyTable() {
           + '<div style="width:32px;height:32px;border-radius:8px;background:' + emp.color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">' + emp.initials + '</div>'
           + '<div>'
             + '<div style="font-weight:700;font-size:13px">' + emp.name.split(' ').slice(0,2).join(' ') + '</div>'
-            + '<div style="font-size:11px;color:var(--c-muted)">' + flagIcon + ' ' + emp.dept + '</div>'
+            + '<div style="font-size:11px;color:var(--c-muted)">' + flagIcon + ' ' + emp.dept
+              + ' · <span style="color:var(--c-muted)">' + polLabel + '</span></div>'
           + '</div>'
         + '</div>'
       + '</td>'
-      // Antigüedad
-      + '<td style="font-size:12px;color:var(--c-muted);white-space:nowrap">' + tenureStr + '</td>'
-      // Días/año
-      + '<td style="text-align:center"><span class="days-badge days-arg" style="font-size:14px;padding:4px 10px">' + days + '</span></td>'
+      // Antigüedad (con tooltip)
+      + '<td style="font-size:12px;color:var(--c-muted);white-space:nowrap">'
+        + '<span data-tip="' + tenureTipStr + '">' + tenureStr + '</span>'
+      + '</td>'
+      // Días/año (con tooltip del tramo)
+      + '<td style="text-align:center">'
+        + '<span class="' + daysClass + '" style="font-size:14px;padding:4px 10px" data-tip="Tramo vigente al 1° oct: ' + days + ' días/año\n' + polLabel + '">' + days + '</span>'
+      + '</td>'
       // Tomados histórico
-      + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px">' + vacUsed + 'd</td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px">'
+        + '<span data-tip="Total acumulado histórico de vacaciones aprobadas\nen todos los años en PicallEx.">' + vacUsed + 'd</span>'
+      + '</td>'
       // Período actual
-      + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px">' + usedThisYear + 'd</td>'
-      // Disponibles
-      + '<td style="text-align:center"><span style="font-size:14px;font-weight:700;color:' + availColor + '">' + available + 'd</span></td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px">'
+        + '<span data-tip="Días de vacaciones aprobados con inicio en ' + today.getFullYear() + '.">' + usedThisYear + 'd</span>'
+      + '</td>'
+      // Disponibles (con tooltip explicativo, especialmente si es negativo)
+      + '<td style="text-align:center"><span data-tip="' + availTip.replace(/"/g, '&quot;') + '" style="font-size:14px;font-weight:700;color:' + availColor + ';cursor:default">' + available + 'd</span></td>'
       // Alerta
       + '<td style="text-align:center;font-size:16px">' + (alertIcons || '<span style="color:var(--c-muted);font-size:12px">—</span>') + '</td>'
       + '</tr>';
