@@ -5128,8 +5128,18 @@ function openLeaveModal(type) {
 
   const keyMap = { 'Vacaciones': 'vacaciones', 'Enfermedad': 'enfermedad', 'Extra Day': 'extra_day', 'Maternidad/Paternidad': 'maternidad' };
   const key = keyMap[type] || 'vacaciones';
-  const bal = b[key] || { total: 0, used: 0, pending: 0 };
-  const avail = bal.total - bal.used - bal.pending;
+  const bal = b?.[key] || { total: 0, used: 0, pending: 0 };
+
+  // Use pre-computed `available` field (cumulative) if present — same as tile
+  // If not, fall back to total - used - pending (for employees without leave_balances)
+  const avail = bal.available !== undefined
+    ? (bal.available - (bal.pending || 0))
+    : (bal.total - bal.used - (bal.pending || 0));
+
+  // "Acumulados" = available + used (makes the math visible: 105 - 37 = 68)
+  const acumulados = bal.available !== undefined
+    ? bal.available + bal.used
+    : bal.total;
 
   document.getElementById('modal-title').textContent = `Solicitar ${type}`;
   document.getElementById('modal-subtitle').textContent = `Colaborador: ${emp.name}`;
@@ -5170,8 +5180,8 @@ function openLeaveModal(type) {
 
   document.getElementById('modal-body').innerHTML = `
     <div class="modal-balance">
-      <div class="mb-item"><div class="mb-num">${bal.total}</div><div class="mb-label">Total</div></div>
-      <div class="mb-item"><div class="mb-num">${bal.used}</div><div class="mb-label">Usados</div></div>
+      <div class="mb-item"><div class="mb-num">${acumulados}</div><div class="mb-label">Acumulados</div></div>
+      <div class="mb-item"><div class="mb-num">${bal.used}</div><div class="mb-label">Tomados</div></div>
       <div class="mb-item"><div class="mb-num" style="color:${avail < 3 ? 'var(--c-danger)' : 'var(--c-accent)'}">${avail}</div><div class="mb-label">Disponibles</div></div>
     </div>
     <div class="modal-field">
