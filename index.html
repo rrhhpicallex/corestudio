@@ -7469,35 +7469,68 @@ function renderLicenciasRepCharts() {
     const TOP_TYPES = Object.entries((() => { const tc={}; reqs.forEach(r=>tc[r.type||'Otro']=(tc[r.type||'Otro']||0)+1); return tc; })())
       .sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k);
     const tColors = { 'Vacaciones':'#1565c0','Enfermedad':'#c62828','Extra Day':'#e65100','Maternidad/Paternidad':'#880e4f','Día de Cumpleaños':'#f9a825','Mudanza':'#bf360c','Final Days':'#1a237e','Licencia Especial':'#4527a0','Paternidad':'#880e4f','Otro':'#888' };
+
+    // Build matrix and pre-store employee lists for drill-down
     const matrix = MONTHS_ES.map((m, mi) => {
       const mReqs = reqs.filter(r => parseInt((r.from||'').split('-')[1])-1 === mi);
       const byType = {};
-      mReqs.forEach(r => byType[r.type||'Otro'] = (byType[r.type||'Otro']||0)+1);
-      return { month: m, byType, total: mReqs.length };
+      const byTypeEmps = {};
+      mReqs.forEach(r => {
+        const t = r.type||'Otro';
+        byType[t] = (byType[t]||0) + 1;
+        if (!byTypeEmps[t]) byTypeEmps[t] = [];
+        // Store employee with request info for richer display
+        const entry = byTypeEmps[t].find(x => x.id === r.emp.id);
+        if (!entry) byTypeEmps[t].push({...r.emp, _reqDays: r.days||0, _reqCount:1});
+        else { entry._reqDays += (r.days||0); entry._reqCount++; }
+      });
+      return { month: m, mi, byType, byTypeEmps, total: mReqs.length,
+        allEmps: [...new Map(mReqs.map(r=>[r.emp.id,r.emp])).values()] };
     });
     const maxPerMonth = Math.max(...matrix.map(m=>m.total), 1);
 
+    // Pre-store drill-down keys
+    matrix.forEach(m => {
+      TOP_TYPES.forEach(t => {
+        const key = 'ltm-' + m.mi + '-' + t;
+        const emps = (m.byTypeEmps[t] || []).map(e => ({...e,
+          title: (e.title||'') + (e._reqCount > 1 ? ` · ${e._reqCount} pedidos` : '') + (e._reqDays ? ` · ${e._reqDays}d` : '')
+        }));
+        window._kpiData[key] = { title: `${t} — ${m.month}`, emps };
+      });
+      const key = 'ltm-' + m.mi + '-total';
+      window._kpiData[key] = { title: `Todas las licencias — ${m.month}`, emps: m.allEmps };
+    });
+
     tiposMesEl.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
-      + '<thead><tr><th style="text-align:left;padding:6px 8px;font-weight:600;color:var(--c-muted);width:50px">Mes</th>'
+      + '<thead><tr><th style="text-align:left;padding:6px 8px;font-weight:600;color:var(--c-muted);width:46px">Mes</th>'
       + TOP_TYPES.map(t=>`<th style="text-align:center;padding:6px 4px;font-weight:600;font-size:11px;color:${tColors[t]||'#888'}">${t}</th>`).join('')
       + '<th style="text-align:center;padding:6px 8px;font-weight:600;color:var(--c-muted)">Total</th>'
       + '<th style="padding:6px 8px;min-width:80px"></th></tr></thead><tbody>'
-      + matrix.map((m, mi) => {
-          const bgAlpha = Math.round((m.total / maxPerMonth) * 40);
+      + matrix.map(m => {
           return `<tr style="border-top:1px solid var(--c-border-light)">
             <td style="padding:6px 8px;font-weight:600;color:var(--c-text-secondary)">${m.month}</td>`
             + TOP_TYPES.map(t => {
                 const v = m.byType[t] || 0;
-                return `<td style="text-align:center;padding:6px 4px;font-size:13px;font-weight:${v>0?'600':'400'};color:${v>0?(tColors[t]||'#888'):'var(--c-border)'}">
-                  ${v > 0 ? v : '·'}
-                </td>`;
+                const key = 'ltm-' + m.mi + '-' + t;
+                if (v > 0) {
+                  return `<td style="text-align:center;padding:4px;cursor:pointer" onclick="onKpiClick('${key}')" title="Ver quiénes pidieron ${t} en ${m.month}">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:${tColors[t]||'#888'}22;color:${tColors[t]||'#888'};font-size:13px;font-weight:700;transition:background .12s" onmouseover="this.style.background='${tColors[t]||'#888'}44'" onmouseout="this.style.background='${tColors[t]||'#888'}22'">${v}</span>
+                  </td>`;
+                }
+                return `<td style="text-align:center;padding:4px;color:var(--c-border);font-size:13px">·</td>`;
               }).join('')
-            + `<td style="text-align:center;padding:6px 8px;font-weight:700;color:var(--c-accent)">${m.total||'·'}</td>
-              <td style="padding:6px 8px"><div style="height:6px;border-radius:3px;background:var(--c-accent);opacity:.35;width:${Math.max(4,Math.round(m.total/maxPerMonth*100))}%"></div></td>
+            + `<td style="text-align:center;padding:4px;cursor:pointer" onclick="onKpiClick('ltm-${m.mi}-total')" title="Ver todas las licencias de ${m.month}">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:var(--c-accent-bg);color:var(--c-accent);font-size:13px;font-weight:700">${m.total||'·'}</span>
+              </td>
+              <td style="padding:6px 8px"><div style="height:6px;border-radius:3px;background:var(--c-accent);opacity:.3;width:${Math.max(4,Math.round(m.total/maxPerMonth*100))}%"></div></td>
             </tr>`;
         }).join('')
       + '</tbody></table></div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px">'
+      + '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;gap:10px;margin-top:10px">'
+      + '<span style="font-size:11px;color:var(--c-muted)">👆 Hacé click en cualquier número para ver quiénes son</span>'
+      + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">'
       + TOP_TYPES.map(t=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:8px;height:8px;border-radius:2px;background:${tColors[t]||'#888'}"></div>${t}</div>`).join('')
       + '</div>';
   }
