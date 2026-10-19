@@ -2154,6 +2154,10 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--radius-lg); padding: 18px 16px;
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.8);
 }
+.rep-kpi-clickable { cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s; }
+.rep-kpi-clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1), inset 0 1px 0 rgba(255,255,255,.9); border-color: var(--c-accent); }
+.rep-kpi-clickable:active { transform: translateY(0); }
+.rep-kpi-click-hint { font-size: 10px; color: var(--c-accent); opacity: .6; margin-top: 6px; letter-spacing: .02em; }
 .rep-kpi-num { font-family: var(--font-mono); font-size: 30px; font-weight: 700; color: var(--c-accent); line-height: 1; }
 .rep-kpi-label { font-size: 12px; color: var(--c-muted); margin-top: 5px; font-weight: 500; }
 .rep-kpi-icon { font-size: 20px; margin-bottom: 10px; }
@@ -4334,9 +4338,14 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-headcount"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title" data-tip="Barras = ingresos por año. Línea punteada = bajas.\nPermite ver el crecimiento neto del equipo a lo largo del tiempo.">Evolución histórica del equipo</div>
-          <div class="rep-chart-sub">Ingresos por año · ···· Bajas por año</div>
-          <svg class="chart-svg" id="chart-ingresos" height="200"></svg>
+          <div class="rep-chart-title" data-tip="Barras verdes = ingresos del año. Barras rojas = bajas del año.\nLínea azul = headcount total acumulado. Hacé click en una barra verde para ver quiénes ingresaron.">Evolución histórica del equipo</div>
+          <div class="rep-chart-sub">🟢 Ingresos · 🔴 Bajas · — Total acumulado</div>
+          <svg class="chart-svg" id="chart-ingresos" height="220"></svg>
+          <div id="chart-ingresos-legend" style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:10px;height:10px;border-radius:3px;background:#4caf50"></div>Ingresos</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:10px;height:10px;border-radius:3px;background:#ef5350"></div>Bajas</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:12px;height:2px;border-radius:2px;background:#1565c0"></div>Total</div>
+          </div>
         </div>
         <div class="rep-chart-card">
           <div class="rep-chart-title" data-tip="Cantidad de colaboradores activos agrupados\npor departamento o área. Hacé click en una barra para ver las personas.">Colaboradores por área</div>
@@ -4390,12 +4399,15 @@ a { color: inherit; text-decoration: none; }
     <!-- LICENCIAS -->
     <div class="rep-panel" id="rp-licencias">
       <!-- Filtro de año -->
-      <div id="lic-year-filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px"></div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <span style="font-size:12px;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em">Filtrar por año:</span>
+        <div id="lic-year-filter" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
       <div class="rep-kpis" id="rep-kpis-licencias"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title" data-tip="Cantidad de solicitudes agrupadas por tipo de licencia\n(vacaciones, estudio, enfermedad, etc.) en el año seleccionado.">Tipo de licencia más usado</div>
-          <div class="rep-chart-sub">Solicitudes por tipo · año seleccionado</div>
+          <div class="rep-chart-title" data-tip="Cantidad de SOLICITUDES por tipo (no días).\nEj: si alguien pide 10 días de vacaciones, cuenta como 1 solicitud.\n• Extra Day: beneficio anual de 1 día libre extra por persona.\n• Día de Cumpleaños: libre el día de cumpleaños.\n• Final Days: días de descanso al final del año.\n• Licencia Especial: licencia extraordinaria por situaciones particulares\n  (trámites, duelo no cubierto, etc.).">Tipo de licencia más usado</div>
+          <div class="rep-chart-sub">Cantidad de solicitudes por tipo · año seleccionado · hacé click para ver personas</div>
           <div id="chart-lic-tipos"></div>
         </div>
         <div class="rep-chart-card">
@@ -4417,6 +4429,11 @@ a { color: inherit; text-decoration: none; }
           <div class="rep-chart-title" data-tip="Ranking de colaboradores por total de días de licencia\naprobados en el período seleccionado. Útil para detectar patrones.">Top colaboradores por días tomados</div>
           <div class="rep-chart-sub">Suma de días de licencia aprobados · año seleccionado</div>
           <div id="chart-lic-top"></div>
+        </div>
+        <div class="rep-chart-card full">
+          <div class="rep-chart-title" data-tip="Distribución de tipos de licencia por mes.\nCada barra es un mes; el color muestra qué tipo predomina.">Tipos de licencia por mes</div>
+          <div class="rep-chart-sub">¿Qué tipo se pide en cada momento del año?</div>
+          <div id="chart-lic-tipos-mes"></div>
         </div>
       </div>
     </div>
@@ -7197,22 +7214,73 @@ function showSegmentPeopleModal(label, emps) {
   document.body.appendChild(modal);
 }
 
+function showKpiBreakdownModal(title, groups) {
+  const old = document.getElementById('seg-people-modal');
+  if (old) old.remove();
+  const content = groups.map(g => `
+    <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--c-border)">
+        <span style="font-weight:700;font-size:13px">${g.label}</span>
+        <span class="list-dept-chip" style="font-size:10px">${g.emps.length} persona${g.emps.length!==1?'s':''}</span>
+      </div>
+      ${g.emps.map(e=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid var(--c-border-light)">
+        <div style="width:28px;height:28px;border-radius:7px;background:${e.color||'#888'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${e.initials||'?'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
+          <div style="font-size:11px;color:var(--c-muted)">${e.title||''}</div>
+        </div>
+      </div>`).join('')}
+    </div>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'seg-people-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
+  modal.innerHTML = `<div style="background:var(--c-surface);border-radius:18px;padding:24px;width:420px;max-width:92vw;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:16px">${title}</div>
+      <button onclick="document.getElementById('seg-people-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--c-muted);line-height:1">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1">${content}</div>
+  </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+window._kpiData = {};
+function onKpiClick(key) {
+  const d = window._kpiData[key];
+  if (!d) return;
+  if (d.grouped) {
+    showKpiBreakdownModal(d.title, d.groups);
+  } else {
+    showSegmentPeopleModal(d.title, d.emps);
+  }
+}
+
 /* ── HEADCOUNT ── */
 function renderHeadcount() {
   const active = DB.employees.filter(e => e.status !== 'inactivo');
   const now = new Date();
   const thisYear = now.getFullYear();
-  const newThisYear = active.filter(e => e.hire_date?.startsWith(String(thisYear))).length;
+  const newThisYearEmps = active.filter(e => e.hire_date?.startsWith(String(thisYear)));
   const avgTenure = (active.reduce((s,e) => s + calcAge(e.hire_date), 0) / active.length).toFixed(1);
+  const countries = [...new Set(active.map(e => e.country || 'Argentina'))];
+  const depts = [...new Set(active.map(e => normalizeDept(e.dept)))].sort();
+
+  // Precompute drill-down data
+  window._kpiData['hc-activos']   = { title:'Colaboradores activos', emps: active };
+  window._kpiData['hc-ingresos']  = { title:`Ingresos ${thisYear}`, emps: newThisYearEmps };
+  window._kpiData['hc-paises']    = { title:'Países', grouped: true, groups: countries.map(c=>({ label:c, emps:active.filter(e=>(e.country||'Argentina')===c) })) };
+  window._kpiData['hc-areas']     = { title:'Áreas', grouped: true, groups: depts.map(d=>({ label:d, emps:active.filter(e=>normalizeDept(e.dept)===d) })) };
+  window._kpiData['hc-antiguedad']= { title:'Top antigüedad', emps: [...active].sort((a,b)=>calcAge(b.hire_date)-calcAge(a.hire_date)).slice(0,15) };
 
   // KPIs
   document.getElementById('rep-kpis-headcount').innerHTML = [
-    { icon:'👥', num: active.length,                   label: 'Activos totales',      tip: 'Total de colaboradores con estado activo.\nNo incluye bajas ni terminados.' },
-    { icon:'🚀', num: newThisYear,                      label: `Ingresos ${thisYear}`, tip: `Nuevos colaboradores que ingresaron durante ${thisYear}.` },
-    { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países', tip: 'Cantidad de países distintos desde los que\nopera el equipo actualmente.' },
-    { icon:'📐', num: [...new Set(active.map(e=>normalizeDept(e.dept)))].length, label: 'Áreas', tip: 'Departamentos o equipos con al menos\nun colaborador activo.' },
-    { icon:'⏱️', num: avgTenure + ' años',              label: 'Antigüedad promedio',  tip: 'Promedio de años de permanencia en PicallEx\nde todos los colaboradores activos.' },
-  ].map(k=>`<div class="rep-kpi" data-tip="${k.tip}"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
+    { key:'hc-activos',   icon:'👥', num: active.length,         label: 'Activos totales',      tip: 'Total de colaboradores con estado activo.\nNo incluye bajas ni terminados.\n👆 Hacé click para ver la lista.' },
+    { key:'hc-ingresos',  icon:'🚀', num: newThisYearEmps.length,label: `Ingresos ${thisYear}`, tip: `Nuevos colaboradores que ingresaron durante ${thisYear}.\n👆 Hacé click para ver quiénes son.` },
+    { key:'hc-paises',    icon:'🌍', num: countries.length,       label: 'Países',               tip: 'Cantidad de países distintos desde los que\nopera el equipo actualmente.\n👆 Hacé click para ver el desglose.' },
+    { key:'hc-areas',     icon:'📐', num: depts.length,           label: 'Áreas',                tip: 'Departamentos o equipos con al menos\nun colaborador activo.\n👆 Hacé click para ver cada área.' },
+    { key:'hc-antiguedad',icon:'⏱️', num: avgTenure + ' años',   label: 'Antigüedad promedio',  tip: 'Promedio de años de permanencia en PicallEx\nde todos los colaboradores activos.\n👆 Hacé click para ver el top.' },
+  ].map(k=>`<div class="rep-kpi rep-kpi-clickable" data-tip="${k.tip}" onclick="onKpiClick('${k.key}')"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div><div class="rep-kpi-click-hint">Ver detalle →</div></div>`).join('');
 
   // Combo chart: ingresos y bajas por año (histórico completo)
   const allEmps = DB.employees; // incluye activos e inactivos
@@ -7327,12 +7395,23 @@ function renderLicenciasRepCharts() {
   const totalDays = approved.reduce((s,r)=>s+(r.days||0),0);
   const yearLabel = window._licYear === 'all' ? 'histórico' : window._licYear;
 
+  // Precompute drill-down data for licencias KPIs
+  const licTypeGroups = Object.entries((() => { const tc={}; reqs.forEach(r=>tc[r.type||'Otro']=(tc[r.type||'Otro']||0)+1); return tc; })())
+    .sort((a,b)=>b[1]-a[1]).map(([k,v])=>({ label:`${k} (${v} solicitudes)`, emps: reqs.filter(r=>(r.type||'Otro')===k).map(r=>r.emp).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i) }));
+  window._kpiData['lic-total']    = { title:`Solicitudes ${yearLabel}`, grouped: true, groups: licTypeGroups };
+  window._kpiData['lic-aprobadas']= { title:'Solicitudes aprobadas', emps: [...new Map(approved.map(r=>[r.emp.id,r.emp])).values()] };
+  window._kpiData['lic-pendientes']={ title:'Solicitudes pendientes', emps: [...new Map(pending.map(r=>[r.emp.id,r.emp])).values()] };
+  window._kpiData['lic-dias']     = { title:'Días tomados por colaborador', grouped: true, groups: (() => {
+    const empD = {}; approved.forEach(r => { if(!empD[r.emp.id]){empD[r.emp.id]={label:r.emp.name+' — '+r.emp.title,emps:[r.emp],_days:0};} empD[r.emp.id]._days+=(r.days||0); });
+    return Object.values(empD).sort((a,b)=>b._days-a._days).map(g=>({label:`${g.label.split('—')[0].trim()} · ${g._days} días`, emps:g.emps}));
+  })() };
+
   document.getElementById('rep-kpis-licencias').innerHTML = [
-    { icon:'📋', num: reqs.length,      label: `Solicitudes (${yearLabel})`, tip: 'Total de solicitudes de licencia registradas\nen el período seleccionado (todos los estados).' },
-    { icon:'✅', num: approved.length,  label: 'Aprobadas',                  tip: 'Solicitudes con estado "aprobado"\nen el período seleccionado.' },
-    { icon:'⏳', num: pending.length,   label: 'Pendientes',                 tip: 'Solicitudes aún sin revisión\no en proceso de aprobación.' },
-    { icon:'📅', num: totalDays,        label: 'Días tomados',               tip: 'Suma de días de todas las solicitudes\naprobadas en el período seleccionado.' },
-  ].map(k=>`<div class="rep-kpi" data-tip="${k.tip}"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
+    { key:'lic-total',     icon:'📋', num: reqs.length,      label: `Solicitudes (${yearLabel})`, tip: 'Total de solicitudes registradas (todos los estados).\nCada vez que alguien pide una licencia cuenta como 1.\n👆 Ver desglose por tipo.' },
+    { key:'lic-aprobadas', icon:'✅', num: approved.length,  label: 'Aprobadas',                  tip: 'Solicitudes con estado "aprobado"\nen el período seleccionado.\n👆 Ver quiénes tienen aprobadas.' },
+    { key:'lic-pendientes',icon:'⏳', num: pending.length,   label: 'Pendientes',                 tip: 'Solicitudes aún sin revisión\no en proceso de aprobación.\n👆 Ver quiénes tienen pendientes.' },
+    { key:'lic-dias',      icon:'📅', num: totalDays,        label: 'Días tomados',               tip: 'Suma de días de solicitudes aprobadas\nen el período. No incluye pendientes.\n👆 Ver ranking por persona.' },
+  ].map(k=>`<div class="rep-kpi rep-kpi-clickable" data-tip="${k.tip}" onclick="onKpiClick('${k.key}')"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div><div class="rep-kpi-click-hint">Ver detalle →</div></div>`).join('');
 
   // Por tipo — horizontal bars
   const typeCount = {};
@@ -7383,6 +7462,45 @@ function renderLicenciasRepCharts() {
   });
   const topData = Object.values(empDays).sort((a,b)=>b.value-a.value).slice(0,10);
   makeHBars('chart-lic-top', topData, null, 'onChartSegClick');
+
+  // Tipos por mes — stacked mini table
+  const tiposMesEl = document.getElementById('chart-lic-tipos-mes');
+  if (tiposMesEl) {
+    const TOP_TYPES = Object.entries((() => { const tc={}; reqs.forEach(r=>tc[r.type||'Otro']=(tc[r.type||'Otro']||0)+1); return tc; })())
+      .sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k);
+    const tColors = { 'Vacaciones':'#1565c0','Enfermedad':'#c62828','Extra Day':'#e65100','Maternidad/Paternidad':'#880e4f','Día de Cumpleaños':'#f9a825','Mudanza':'#bf360c','Final Days':'#1a237e','Licencia Especial':'#4527a0','Paternidad':'#880e4f','Otro':'#888' };
+    const matrix = MONTHS_ES.map((m, mi) => {
+      const mReqs = reqs.filter(r => parseInt((r.from||'').split('-')[1])-1 === mi);
+      const byType = {};
+      mReqs.forEach(r => byType[r.type||'Otro'] = (byType[r.type||'Otro']||0)+1);
+      return { month: m, byType, total: mReqs.length };
+    });
+    const maxPerMonth = Math.max(...matrix.map(m=>m.total), 1);
+
+    tiposMesEl.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr><th style="text-align:left;padding:6px 8px;font-weight:600;color:var(--c-muted);width:50px">Mes</th>'
+      + TOP_TYPES.map(t=>`<th style="text-align:center;padding:6px 4px;font-weight:600;font-size:11px;color:${tColors[t]||'#888'}">${t}</th>`).join('')
+      + '<th style="text-align:center;padding:6px 8px;font-weight:600;color:var(--c-muted)">Total</th>'
+      + '<th style="padding:6px 8px;min-width:80px"></th></tr></thead><tbody>'
+      + matrix.map((m, mi) => {
+          const bgAlpha = Math.round((m.total / maxPerMonth) * 40);
+          return `<tr style="border-top:1px solid var(--c-border-light)">
+            <td style="padding:6px 8px;font-weight:600;color:var(--c-text-secondary)">${m.month}</td>`
+            + TOP_TYPES.map(t => {
+                const v = m.byType[t] || 0;
+                return `<td style="text-align:center;padding:6px 4px;font-size:13px;font-weight:${v>0?'600':'400'};color:${v>0?(tColors[t]||'#888'):'var(--c-border)'}">
+                  ${v > 0 ? v : '·'}
+                </td>`;
+              }).join('')
+            + `<td style="text-align:center;padding:6px 8px;font-weight:700;color:var(--c-accent)">${m.total||'·'}</td>
+              <td style="padding:6px 8px"><div style="height:6px;border-radius:3px;background:var(--c-accent);opacity:.35;width:${Math.max(4,Math.round(m.total/maxPerMonth*100))}%"></div></td>
+            </tr>`;
+        }).join('')
+      + '</tbody></table></div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px">'
+      + TOP_TYPES.map(t=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:8px;height:8px;border-radius:2px;background:${tColors[t]||'#888'}"></div>${t}</div>`).join('')
+      + '</div>';
+  }
 }
 
 /* ── ESTRUCTURA ── */
@@ -8505,16 +8623,25 @@ function renderEvolucion() {
 // Line chart SVG helper
 // Combo chart: bars (hires) + dotted line (terminations) by year
 function makeComboBarLine(svgId, barData, lineData) {
+  // barData[i] = ingresos year i, lineData[i].value = bajas year i
   const svg = document.getElementById(svgId);
   if (!svg) return;
   const W = svg.parentElement?.offsetWidth || svg.parentElement?.clientWidth || 600;
-  const H = 200;
-  const pad = { top:24, right:16, bottom:32, left:36 };
+  const H = 220;
+  const pad = { top:28, right:48, bottom:36, left:36 };
   const cW = W - pad.left - pad.right;
   const cH = H - pad.top - pad.bottom;
   const n = barData.length;
-  const maxVal = Math.max(...barData.map(d=>d.value), ...lineData.map(d=>d.value), 1);
-  const bw = Math.max(8, cW / n - 6);
+
+  // Compute cumulative total per year
+  const totals = [];
+  let cum = 0;
+  barData.forEach((d, i) => { cum += d.value - (lineData[i]?.value||0); totals.push(Math.max(0, cum)); });
+
+  const maxBars = Math.max(...barData.map(d=>d.value), ...lineData.map(d=>d.value||0), 1);
+  const maxTotal = Math.max(...totals, 1);
+  const colW = cW / n;
+  const bw = Math.max(4, colW * 0.38);
 
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   svg.setAttribute('height', H);
@@ -8522,36 +8649,62 @@ function makeComboBarLine(svgId, barData, lineData) {
   window._chartData[svgId] = barData;
 
   let out = '<line class="chart-axis" x1="' + pad.left + '" y1="' + (pad.top+cH) + '" x2="' + (W-pad.right) + '" y2="' + (pad.top+cH) + '"/>';
+
+  // Left gridlines (bar scale)
   for (let i=1;i<=4;i++) {
     const y = pad.top + cH - (cH*i/4);
     out += '<line class="chart-gridline" x1="' + pad.left + '" y1="' + y.toFixed(1) + '" x2="' + (W-pad.right) + '" y2="' + y.toFixed(1) + '"/>';
-    out += '<text class="chart-label" x="' + (pad.left-4) + '" y="' + (y+3).toFixed(1) + '" text-anchor="end">' + Math.round(maxVal*i/4) + '</text>';
+    out += '<text class="chart-label" x="' + (pad.left-4) + '" y="' + (y+3).toFixed(1) + '" text-anchor="end">' + Math.round(maxBars*i/4) + '</text>';
+  }
+  // Right axis labels (total scale, blue)
+  for (let i=1;i<=4;i++) {
+    const y = pad.top + cH - (cH*i/4);
+    out += '<text class="chart-label" x="' + (W-pad.right+5) + '" y="' + (y+3).toFixed(1) + '" text-anchor="start" fill="#1565c0" opacity=".65">' + Math.round(maxTotal*i/4) + '</text>';
   }
 
-  // Bars (ingresos)
+  // Bars and year labels
   barData.forEach((d, i) => {
-    const bh = Math.max(2, (d.value/maxVal)*cH);
-    const cx = pad.left + i*(cW/n) + (cW/n)/2;
-    const x = cx - bw/2;
-    const y = pad.top + cH - bh;
-    out += '<rect class="chart-bar" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="var(--c-accent)" opacity=".85" onclick="onChartSegClick(\'' + svgId + '\',' + i + ')" style="cursor:pointer"><title>' + d.label + ': ' + d.value + ' ingresos</title></rect>';
-    if (d.value > 0) out += '<text class="chart-value" x="' + cx.toFixed(1) + '" y="' + (y-3).toFixed(1) + '" text-anchor="middle">' + d.value + '</text>';
-    out += '<text class="chart-label" x="' + cx.toFixed(1) + '" y="' + (H-pad.bottom+13) + '" text-anchor="middle">' + String(d.label).slice(-2) + '</text>';
+    const cx = pad.left + i*colW + colW/2;
+    const baja = lineData[i]?.value || 0;
+
+    // Green bar — ingresos (left of center)
+    if (d.value > 0) {
+      const bh1 = Math.max(2, (d.value/maxBars)*cH);
+      const x1 = cx - bw - 1;
+      out += '<rect x="' + x1.toFixed(1) + '" y="' + (pad.top+cH-bh1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh1.toFixed(1) + '" rx="3" fill="#4caf50" opacity=".9"'
+        + ' onclick="onChartSegClick(\'' + svgId + '\',' + i + ')" style="cursor:pointer"'
+        + ' data-tip="' + d.label + ': ' + d.value + ' ingreso' + (d.value!==1?'s':'') + '"></rect>';
+      if (d.value >= 1) out += '<text class="chart-value" x="' + (x1+bw/2).toFixed(1) + '" y="' + (pad.top+cH-bh1-3).toFixed(1) + '" text-anchor="middle" fill="#1b5e20" font-size="10">' + d.value + '</text>';
+    }
+
+    // Red bar — bajas (right of center)
+    if (baja > 0) {
+      const bh2 = Math.max(2, (baja/maxBars)*cH);
+      const x2 = cx + 1;
+      out += '<rect x="' + x2.toFixed(1) + '" y="' + (pad.top+cH-bh2).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh2.toFixed(1) + '" rx="3" fill="#ef5350" opacity=".85"'
+        + ' data-tip="' + d.label + ': ' + baja + ' baja' + (baja!==1?'s':'') + '"></rect>';
+      out += '<text class="chart-value" x="' + (x2+bw/2).toFixed(1) + '" y="' + (pad.top+cH-bh2-3).toFixed(1) + '" text-anchor="middle" fill="#b71c1c" font-size="10">' + baja + '</text>';
+    }
+
+    out += '<text class="chart-label" x="' + cx.toFixed(1) + '" y="' + (H-pad.bottom+14) + '" text-anchor="middle">' + String(d.label).slice(-2) + '</text>';
   });
 
-  // Dotted line (bajas)
-  const pts = lineData.map((d,i) => ({
-    x: pad.left + i*(cW/n) + (cW/n)/2,
-    y: pad.top + cH - (d.value/maxVal)*cH,
-    v: d.value
+  // Blue total line (right scale)
+  const totalPts = totals.map((t, i) => ({
+    x: pad.left + i*colW + colW/2,
+    y: pad.top + cH - (t/maxTotal)*cH,
+    v: t, yr: barData[i].label
   }));
-  if (pts.length > 1) {
-    const lineD = pts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
-    out += '<path d="' + lineD + '" fill="none" stroke="#e53935" stroke-width="2" stroke-dasharray="4 3" opacity=".8"/>';
+  if (totalPts.length > 1) {
+    const pathD = totalPts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    out += '<path d="' + pathD + '" fill="none" stroke="#1565c0" stroke-width="2.5" opacity=".75"/>';
   }
-  pts.forEach(p => {
-    if (p.v > 0) {
-      out += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#e53935" stroke="var(--c-card)" stroke-width="2" opacity=".9"><title>' + p.v + ' bajas</title></circle>';
+  totalPts.forEach((p, i) => {
+    out += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#1565c0" stroke="var(--c-card)" stroke-width="2" opacity=".9"'
+      + ' data-tip="' + p.yr + ': ' + p.v + ' colaboradores en total"/>';
+    // Label every 3 years or first/last
+    if (i === 0 || i === totalPts.length-1 || i % 3 === 0) {
+      out += '<text x="' + p.x.toFixed(1) + '" y="' + (p.y-7).toFixed(1) + '" text-anchor="middle" font-size="9" fill="#1565c0" font-family="var(--font-mono)" font-weight="700">' + p.v + '</text>';
     }
   });
 
