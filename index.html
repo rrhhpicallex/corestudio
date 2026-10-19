@@ -330,6 +330,35 @@ a { color: inherit; text-decoration: none; }
 .dir-search input { background: none; border: none; outline: none; font-size: 14px; color: var(--c-text); width: 100%; }
 .dir-search input::placeholder { color: var(--c-muted); }
 .dir-search svg { width: 15px; height: 15px; color: var(--c-muted); flex-shrink: 0; }
+/* Main directory search bar — larger and highlighted */
+.dir-search-main {
+  padding: 11px 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+.dir-search-main input { font-size: 15px; }
+.dir-search-main:focus-within {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px rgba(76,175,80,.18), 0 2px 12px rgba(76,175,80,.12);
+}
+/* Funnel button */
+.dir-funnel-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border-radius: 10px;
+  border: 1px solid var(--c-border);
+  background: var(--c-card); color: var(--c-text-secondary);
+  font-size: 13px; font-weight: 600;
+  box-shadow: var(--shadow-xs);
+  cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.dir-funnel-btn:hover { background: var(--c-surface); box-shadow: var(--shadow-sm); }
+.dir-funnel-btn.active {
+  background: var(--c-accent-light);
+  border-color: rgba(76,175,80,.4);
+  color: var(--c-accent-hover);
+  box-shadow: 0 0 0 2px rgba(76,175,80,.15);
+}
 
 .btn-filter {
   display: flex; align-items: center; gap: 6px;
@@ -3446,50 +3475,84 @@ a { color: inherit; text-decoration: none; }
           </div>
         </div>
 
-        <!-- ADVANCED FILTER BAR -->
-        <div class="adv-filter-bar" id="adv-filter-bar">
-          <div class="dir-search" style="flex:1;min-width:180px;max-width:280px">
+        <!-- SEARCH + FILTER FUNNEL -->
+        <div style="display:flex;align-items:center;gap:10px;padding:0 26px 16px;flex-wrap:wrap">
+          <!-- Search bar: prominent, full-width feel -->
+          <div class="dir-search dir-search-main" style="flex:1;min-width:240px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="Buscar por nombre, email, cargo..." oninput="filterDirectory(this.value)" id="dir-search-input"/>
+            <input type="text" placeholder="Buscá por nombre, email o cargo..." oninput="filterDirectory(this.value)" id="dir-search-input"/>
+            <kbd style="font-size:10px;color:var(--c-muted);border:1px solid var(--c-border);border-radius:4px;padding:1px 5px;white-space:nowrap;flex-shrink:0">⌘K</kbd>
           </div>
-          <select class="filter-select" id="f-dept" onchange="applyAdvFilters()">
-            <option value="">Área</option>
-            <option>Desarrollo</option>
-            <option>C2R</option><option>CX</option><option>RRHH</option>
-            <option>Administración/Billing</option>
-            <option>Marketing</option><option>Artes</option><option>Finanzas</option>
-            <option>Comercial</option><option>Legales</option>
-          </select>
-          <select class="filter-select" id="f-level" onchange="applyAdvFilters()">
-            <option value="">Nivel</option>
-            <option>Junior</option><option>Semi Senior</option><option>Senior</option>
-          </select>
-          <select class="filter-select" id="f-type" onchange="applyAdvFilters()">
-            <option value="">Modalidad</option>
-            <option>Full-time</option><option>Part-time</option><option>Consultor a Demanda</option>
-          </select>
-          <select class="filter-select" id="f-country" onchange="applyAdvFilters()">
-            <option value="">Ubicación</option>
-            <option>Argentina</option><option>Colombia</option><option>Estados Unidos</option>
-          </select>
-          <select class="filter-select" id="f-manager" onchange="applyAdvFilters()">
-            <option value="">Líder</option>
-          </select>
-          <div class="filter-date-group">
-            <span class="filter-date-label">Ingreso</span>
-            <input type="date" class="filter-date-input" id="f-from" onchange="applyAdvFilters()" title="Desde"/>
-            <span style="color:var(--c-muted);font-size:11px">→</span>
-            <input type="date" class="filter-date-input" id="f-to" onchange="applyAdvFilters()" title="Hasta"/>
-          </div>
-          <select class="filter-select" id="f-status" onchange="applyAdvFilters()" title="Estado">
+          <!-- Funnel button -->
+          <button class="dir-funnel-btn" id="dir-funnel-btn" onclick="toggleDirFunnel()" data-tip="Filtrá por área, nivel, modalidad, país, líder y fecha de ingreso">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filtros
+            <span id="dir-funnel-count" style="display:none;background:var(--c-accent);color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;margin-left:2px">0</span>
+          </button>
+          <!-- Status toggle (always visible) -->
+          <select class="filter-select" id="f-status" onchange="applyAdvFilters()" style="flex-shrink:0">
             <option value="active">Activos</option>
             <option value="terminated">Bajas</option>
             <option value="">Todos</option>
           </select>
-          <button class="btn-clear-filters" onclick="clearAdvFilters()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;display:inline;margin-right:4px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Limpiar
-          </button>
+        </div>
+
+        <!-- Funnel panel (collapsed by default) -->
+        <div id="dir-funnel-panel" style="display:none;padding:0 26px 16px">
+          <div style="background:var(--c-card);border:1px solid var(--c-border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow-sm)">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Área</div>
+                <select class="filter-select" id="f-dept" onchange="applyAdvFilters();updateFunnelCount()" style="width:100%">
+                  <option value="">Todas</option>
+                  <option>Desarrollo</option><option>C2R</option><option>CX</option><option>RRHH</option>
+                  <option>Administración/Billing</option><option>Marketing</option><option>Artes</option>
+                  <option>Finanzas</option><option>Comercial</option><option>Legales</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Nivel</div>
+                <select class="filter-select" id="f-level" onchange="applyAdvFilters();updateFunnelCount()" style="width:100%">
+                  <option value="">Todos</option>
+                  <option>Junior</option><option>Semi Senior</option><option>Senior</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Modalidad</div>
+                <select class="filter-select" id="f-type" onchange="applyAdvFilters();updateFunnelCount()" style="width:100%">
+                  <option value="">Todas</option>
+                  <option>Full-time</option><option>Part-time</option><option>Consultor a Demanda</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">País</div>
+                <select class="filter-select" id="f-country" onchange="applyAdvFilters();updateFunnelCount()" style="width:100%">
+                  <option value="">Todos</option>
+                  <option>Argentina</option><option>Colombia</option><option>Estados Unidos</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Líder</div>
+                <select class="filter-select" id="f-manager" onchange="applyAdvFilters();updateFunnelCount()" style="width:100%">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div style="grid-column:span 2">
+                <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ingreso</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="date" class="filter-date-input" id="f-from" onchange="applyAdvFilters();updateFunnelCount()" style="flex:1" title="Desde"/>
+                  <span style="color:var(--c-muted);font-size:12px">→</span>
+                  <input type="date" class="filter-date-input" id="f-to" onchange="applyAdvFilters();updateFunnelCount()" style="flex:1" title="Hasta"/>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;justify-content:flex-end">
+              <button class="btn-clear-filters" onclick="clearAdvFilters();updateFunnelCount()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;display:inline;margin-right:4px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- CARDS VIEW -->
@@ -3642,10 +3705,19 @@ a { color: inherit; text-decoration: none; }
                 </div>
                 </div>
                 <div class="form-group">
-                  <div class="form-label">DNI / CUIL</div>
+                  <div class="form-label">DNI</div>
                   <div class="field-edit-wrap">
-                  <input class="form-value-editable" id="fi-dni" placeholder="DNI / CUIL" readonly oninput="markDirty()"/>
+                  <input class="form-value-editable" id="fi-dni" placeholder="Ej: 42112233" readonly oninput="markDirty()"/>
                   <button class="field-edit-btn" onclick="enableFieldEdit('fi-dni')" title="Editar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                </div>
+                </div>
+                <div class="form-group">
+                  <div class="form-label">CUIL</div>
+                  <div class="field-edit-wrap">
+                  <input class="form-value-editable" id="fi-cuil" placeholder="Ej: 30-42112233-4" readonly oninput="markDirty()"/>
+                  <button class="field-edit-btn" onclick="enableFieldEdit('fi-cuil')" title="Editar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                 </div>
@@ -4643,9 +4715,16 @@ function openProfile(empId) {
 
   startTenureCounter(e.hire_date);
 
+  // Parsear DNI vs CUIL: CUIL tiene formato XX-XXXXXXXX-X
+  const cuilRaw = e.cuil || e.dni || '';
+  const culiMatch = cuilRaw.match(/^(\d{2})-(\d{6,8})-(\d)$/);
+  const displayDni  = culiMatch ? culiMatch[2] : (e.dni && !e.dni.includes('-') ? e.dni : '');
+  const displayCuil = culiMatch ? cuilRaw : (e.cuil || '');
+
   // personal tab
   document.getElementById('fi-fullname').textContent = e.name;
-  document.getElementById('fi-dni').textContent = e.dni;
+  document.getElementById('fi-dni').textContent = displayDni;
+  if (document.getElementById('fi-cuil')) document.getElementById('fi-cuil').textContent = displayCuil;
   document.getElementById('fi-dob').textContent = fmtDate(e.dob);
   document.getElementById('fi-gender').textContent = e.gender;
   document.getElementById('fi-address').textContent = e.address;
@@ -4677,7 +4756,7 @@ function openProfile(empId) {
   const _e = currentEmployee;
   if (_e) {
     const _fm = {
-      'fi-fullname': _e.name||'', 'fi-dni': _e.dni||'',
+      'fi-fullname': _e.name||'', 'fi-dni': displayDni, 'fi-cuil': displayCuil,
       'fi-dob': _e.dob ? fmtDate(_e.dob) : '',
       'fi-gender': _e.gender||'', 'fi-address': _e.address||'',
       'fi-health': _e.health_insurance||'', 'fi-email': _e.email||'',
@@ -5364,6 +5443,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderLoginUsers();
   // Don't auto-navigate — wait for login
 
+  // ⌘K / Ctrl+K focuses directory search
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      const inp = document.getElementById('dir-search-input');
+      if (inp) {
+        inp.focus();
+        inp.select();
+        // If not on directory view, switch there
+        const grid = document.getElementById('dir-grid');
+        if (grid && !document.getElementById('view-directorio')?.classList.contains('hidden') === false) {
+          // already visible — just focus
+        }
+      }
+    }
+  });
 });
 
 /* ═══════════════════════════════════════════════════
@@ -6053,6 +6148,27 @@ function clearAdvFilters() {
   const si = document.getElementById('dir-search-input');
   if (si) si.value = '';
   applyDirectoryFilters();
+  updateFunnelCount();
+}
+
+function toggleDirFunnel() {
+  const panel = document.getElementById('dir-funnel-panel');
+  const btn   = document.getElementById('dir-funnel-btn');
+  if (!panel) return;
+  const open = panel.style.display === 'none' || panel.style.display === '';
+  panel.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('active', open);
+}
+
+function updateFunnelCount() {
+  const ids = ['f-dept','f-level','f-type','f-country','f-manager','f-from','f-to'];
+  const active = ids.filter(id => { const el = document.getElementById(id); return el && el.value; }).length;
+  const badge = document.getElementById('dir-funnel-count');
+  const btn   = document.getElementById('dir-funnel-btn');
+  if (!badge) return;
+  badge.textContent = active;
+  badge.style.display = active > 0 ? 'inline' : 'none';
+  if (btn) btn.classList.toggle('active', active > 0);
 }
 
 // Patch getFilteredEmps to include adv filters
@@ -6213,7 +6329,7 @@ function saveProfile() {
   if (!currentEmployee) return;
   // Read back values into DB
   const map = {
-    'fi-fullname': 'name', 'fi-dni': 'dni', 'fi-dob': 'dob',
+    'fi-fullname': 'name', 'fi-dni': 'dni', 'fi-cuil': 'cuil', 'fi-dob': 'dob',
     'fi-gender': 'gender', 'fi-address': 'address', 'fi-health': 'health_insurance',
     'fi-email': 'email',
   };
