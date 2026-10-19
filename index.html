@@ -8691,7 +8691,7 @@ function renderEvolucion() {
     rows.forEach(r => { window._snDepts[r.dept] = r.cohort; });
     snEl.innerHTML = '<div class="stacked-wrap">'
       + rows.map(r =>
-          '<div class="stacked-row" style="cursor:pointer" onclick="showSegmentPeopleModal(\'' + r.dept.replace(/'/g,"\\'\") + '\', (window._snDepts||{})[\'' + r.dept.replace(/'/g,"\\'\") + '\']||[])">'
+          '<div class="stacked-row" style="cursor:pointer" onclick="showSegmentPeopleModal(\'' + r.dept + '\', (window._snDepts||{})[\'' + r.dept + '\']||[])">'
           + '<div class="stacked-label" style="width:80px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.dept.slice(0,14) + '</div>'
           + '<div class="stacked-bar">'
             + (r.j>0 ? '<div class="stacked-seg" style="width:' + Math.round(r.j/r.tot*100) + '%;background:#a5d6a7" title="Junior: '+r.j+'">' + r.j + '</div>' : '')
