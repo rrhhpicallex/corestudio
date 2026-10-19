@@ -5994,31 +5994,43 @@ function openLDP(dataStr) {
     renderMiniCalFromDay(evData.from_day, evData.to_day, style.bg, style.text, null);
   }
 
-  // Approvers — use real reviewer from req, then fallback to APPROVERS list
+  // Approvers — cadena: HR primero, luego el manager del colaborador
   const apprList = document.getElementById('ldp-approvers-list');
   if (evData.type === 'bday') {
     apprList.innerHTML = '<div style="font-size:13px;color:var(--c-muted);padding:8px 0">Sin aprobadores requeridos</div>';
   } else {
-    // Build approver cards
-    const approvers = [];
-    // Real reviewer from request
-    if (req && req.reviewer && req.reviewer !== '—') {
-      const revName = req.reviewer.replace(' En fila', '').trim();
-      const known   = APPROVERS.find(a => a.name.includes(revName.split(' ')[0]) || revName.includes(a.name.split(' ')[0]));
-      approvers.push({
-        name: revName,
-        role: known ? known.role : 'HR · PicallEx',
-        color: known ? known.color : '#1565c0',
-        initials: revName.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0,2).toUpperCase(),
-        status: req ? req.status : 'pendiente'
-      });
-    }
-    // If status approved, always add the approver even if name is '—'
-    if (approvers.length === 0) {
-      APPROVERS.slice(0,2).forEach(a => approvers.push({ ...a, status: req ? req.status : 'pendiente' }));
-    }
+    // Build approver chain: HR (step 1) → Manager (step 2)
+    const reqStatus  = req ? req.status : 'pendiente';
+    const reviewerName = req && req.reviewer && req.reviewer !== '—' ? req.reviewer.replace(' En fila','').trim() : null;
 
-    apprList.innerHTML = approvers.map(a => {
+    // Step 1 — HR approver: if request is approved, show actual reviewer if they're HR; else show default HR
+    const hrApprover = (() => {
+      if (reviewerName) {
+        const known = APPROVERS.find(a => a.name.includes(reviewerName.split(' ')[0]) || reviewerName.includes(a.name.split(' ')[0]));
+        if (known) return { ...known, status: reqStatus };
+      }
+      // Default: first available HR approver
+      const hr = APPROVERS[0];
+      return { ...hr, status: reqStatus };
+    })();
+
+    // Step 2 — Manager approver
+    const managerApprover = (() => {
+      const mgrName = emp.manager_name || '';
+      const mgrEmp  = mgrName ? DB.employees.find(e => e.name === mgrName) : null;
+      return {
+        name:     mgrName || 'Manager',
+        role:     mgrEmp ? (mgrEmp.title || mgrEmp.dept || 'Manager') : 'Manager',
+        color:    mgrEmp ? (mgrEmp.color || '#546e7a') : '#546e7a',
+        initials: mgrName ? mgrName.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() : 'MG',
+        status:   reqStatus === 'aprobado' ? 'aprobado' : 'pendiente',
+      };
+    })();
+
+    const approvers = mgrName => [hrApprover, ...(emp.manager_name ? [managerApprover] : [])];
+    const approverList = [hrApprover, ...(emp.manager_name ? [managerApprover] : [])];
+
+    apprList.innerHTML = approverList.map(a => {
       const isPending  = a.status === 'pendiente';
       const isRejected = a.status === 'rechazado';
       const icon = isPending
@@ -6045,7 +6057,7 @@ function openLDP(dataStr) {
   // Show approve/reject buttons for admin users on pending requests
   const actionRow = document.getElementById('ldp-action-row');
   if (actionRow) {
-    const isAdmin = (window._currentUser?.role === 'admin');
+    const isAdmin = (currentUser?.role === 'admin');
     const isPending = req && req.status === 'pendiente';
     actionRow.style.display = (isAdmin && isPending) ? 'flex' : 'none';
   }
