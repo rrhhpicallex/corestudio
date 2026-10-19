@@ -4420,16 +4420,6 @@ a { color: inherit; text-decoration: none; }
           <div class="rep-chart-sub">¿En qué meses se piden más y de qué tipo?</div>
           <div id="chart-lic-mes-stacked" style="min-height:200px"></div>
         </div>
-        <div class="rep-chart-card">
-          <div class="rep-chart-title" data-tip="Total de solicitudes de licencia por año.\nPermite ver si el uso de licencias crece con el equipo.">Solicitudes por año</div>
-          <div class="rep-chart-sub">Tendencia histórica de licencias pedidas</div>
-          <svg class="chart-svg" id="chart-lic-anio" height="180"></svg>
-        </div>
-        <div class="rep-chart-card">
-          <div class="rep-chart-title" data-tip="Distribución de solicitudes por estado:\naprobadas, pendientes y rechazadas en el período seleccionado.">Estado de solicitudes</div>
-          <div class="rep-chart-sub">Aprobadas · Pendientes · Rechazadas</div>
-          <div class="donut-wrap" id="chart-lic-status"></div>
-        </div>
         <div class="rep-chart-card full">
           <div class="rep-chart-title" data-tip="Ranking de colaboradores por total de días de licencia\naprobados en el período seleccionado. Útil para detectar patrones.">Top colaboradores por días tomados</div>
           <div class="rep-chart-sub">Suma de días de licencia aprobados · año seleccionado</div>
@@ -8508,7 +8498,6 @@ function renderRetencion() {
     { icon:'🔒', num: retRate + '%', label: 'Tasa de retención', sub: 'Mercado IT ARG: ~72%', tip: 'Activos / (Activos + Bajas) × 100.\nBenchmark IT Argentina: ~72%.' },
     { icon:'📉', num: rotRate + '%', label: 'Tasa de rotación',  sub: 'Mercado IT ARG: ~28%', tip: 'Bajas / (Activos + Bajas) × 100.\nBenchmark IT Argentina: ~28%.' },
     { icon:'⏱️', num: avgTenure + ' años', label: 'Antigüedad promedio', sub: 'Benchmark: 2.1 años', tip: 'Promedio de años en PicallEx de todos\nlos activos. Benchmark IT ARG: 2.1 años.' },
-    { icon:'⚠️', num: calcRiesgoAlto(active), label: 'En riesgo alto', sub: 'Score > 70', tip: 'Colaboradores con score de riesgo de\negreso > 70 (basado en antigüedad, nivel y modalidad).' },
   ].map(k => '<div class="rep-kpi" data-tip="' + k.tip + '"><div class="rep-kpi-icon">' + k.icon + '</div>'
     + '<div class="rep-kpi-num">' + k.num + '</div>'
     + '<div class="rep-kpi-label">' + k.label + '</div>'
