@@ -333,7 +333,7 @@ a { color: inherit; text-decoration: none; }
 /* Main directory search bar — larger and highlighted */
 .dir-search-main {
   padding: 11px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 2px 8px rgba(0,0,0,.07);
 }
 .dir-search-main input { font-size: 15px; }
@@ -771,7 +771,7 @@ a { color: inherit; text-decoration: none; }
 }
 .report-item:hover { background: var(--c-accent-light); transform: translateX(3px); box-shadow: var(--shadow-sm); }
 .report-avatar {
-  width: 36px; height: 36px; border-radius: 9px;
+  width: 36px; height: 36px; border-radius: var(--radius);
   color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 12px; flex-shrink: 0;
@@ -967,10 +967,14 @@ a { color: inherit; text-decoration: none; }
 
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 48px; color: var(--c-muted); text-align: center; gap: 10px;
+  padding: 52px 32px; color: var(--c-muted); text-align: center; gap: 6px;
 }
-.empty-state svg { width: 40px; height: 40px; opacity: .35; }
-.empty-state p { font-size: 14px; }
+.empty-state svg { width: 44px; height: 44px; opacity: .18; margin-bottom: 10px; color: var(--c-muted); }
+.empty-state h4 { font-size: 14px; font-weight: 600; color: var(--c-text-secondary); margin: 0; letter-spacing: -0.01em; }
+.empty-state p { font-size: 13px; color: var(--c-muted); margin: 0; line-height: 1.6; max-width: 280px; }
+.empty-state-card {
+  border: 1.5px dashed var(--c-border); border-radius: var(--radius-lg);
+}
 
 /* ─── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 900px) {
@@ -1118,7 +1122,8 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 .list-name-cell { display: flex; align-items: center; gap: 10px; }
-.list-name { font-weight: 600; font-size: 13.5px; }
+.list-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; color: var(--c-text); }
+.list-secondary { font-size: 12.5px; color: var(--c-muted); }
 .list-dept-chip {
   display: inline-block; padding: 2px 8px; border-radius: 99px;
   font-size: 10.5px; font-weight: 700;
@@ -1611,7 +1616,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow-md), 0 0 0 4px rgba(76,175,80,0.12);
 }
 .ai-bar-icon {
-  width: 32px; height: 32px; border-radius: 9px;
+  width: 32px; height: 32px; border-radius: var(--radius);
   background: linear-gradient(135deg, var(--c-accent-light), rgba(76,175,80,0.15));
   border: 1px solid rgba(76,175,80,0.25);
   display: flex; align-items: center; justify-content: center;
@@ -3563,8 +3568,7 @@ a { color: inherit; text-decoration: none; }
           <div class="dir-list-card">
             <table class="dir-list-table">
               <thead><tr>
-                <th onclick="sortDir('name')">Nombre ↕</th>
-                <th onclick="sortDir('title')">Puesto ↕</th>
+                <th onclick="sortDir('name')">Colaborador ↕</th>
                 <th onclick="sortDir('dept')">Área ↕</th>
                 <th onclick="sortDir('country')">Ubicación ↕</th>
                 <th onclick="sortDir('manager_name')">Líder ↕</th>
@@ -4618,10 +4622,7 @@ let deptFilter = 'all';
 function renderDirectory(empList) {
   const grid = document.getElementById('dir-grid');
   if (!empList || empList.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-      <p>No hay colaboradores para los filtros aplicados</p>
-    </div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg><h4>Sin resultados</h4><p>Ningún colaborador coincide con los filtros activos. Probá ajustarlos.</p></div>`;
     return;
   }
     // Restore stored photos after render
@@ -4916,10 +4917,7 @@ function renderLeaveTiles(e) {
 function renderLeaveTable(e) {
   const tbody = document.getElementById('request-tbody');
   if (!e.leave_requests || e.leave_requests.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
-      <p>Sin solicitudes registradas</p>
-    </div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><h4>Sin historial de licencias</h4><p>Las solicitudes aprobadas o pendientes aparecerán aquí.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = e.leave_requests.map(r => `
@@ -4944,7 +4942,7 @@ function renderDocList(e) {
   if (!list) return;
   const docs = e.documents || [];
   if (docs.length === 0) {
-    list.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--c-muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Sin documentos adjuntos</p></div>`;
+    list.innerHTML = `<div class="empty-state empty-state-card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><h4>Sin documentos adjuntos</h4><p>Subí el primero usando el botón "Subir documento" de arriba.</p></div>`;
     return;
   }
   const catLabel = {contrato:'Contrato',recibo:'Recibo',personal:'Doc. personal',otro:'Otro'};
@@ -5488,13 +5486,15 @@ function renderListView(empList) {
     <tr onclick="openProfile('${e.id}')">
       <td><div class="list-name-cell">
         <div class="list-avatar" style="background:${e.color}">${e.initials}</div>
-        <span class="list-name">${e.name}</span>
+        <div>
+          <div class="list-name">${e.name}</div>
+          <div class="list-secondary" style="margin-top:1px">${e.title || ''}</div>
+        </div>
       </div></td>
-      <td style="font-size:12.5px">${e.title || '—'}</td>
       <td><span class="list-dept-chip">${e.dept}</span></td>
-      <td class="list-country">${e.country}</td>
-      <td style="font-size:12.5px;color:var(--c-muted)">${e.manager_name || '—'}</td>
-      <td class="text-mono" style="font-size:12px">${fmtDate(e.hire_date)}</td>
+      <td class="list-secondary list-country">${e.country}</td>
+      <td class="list-secondary">${e.manager_name || '—'}</td>
+      <td class="text-mono list-secondary">${fmtDate(e.hire_date)}</td>
     </tr>
   `).join('');
 }
@@ -5616,7 +5616,7 @@ function renderSolicitudes() {
   const tbody = document.getElementById('solicit-tbody');
   if (!tbody) return;
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><p>Sin solicitudes en esta categoría</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><h4>Sin solicitudes en esta categoría</h4><p>Cuando haya solicitudes pendientes o aprobadas, aparecerán aquí.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = filtered.map(r => `
@@ -7598,7 +7598,7 @@ function renderNovFeed() {
   posts = posts.sort((a,b) => new Date(b.ts) - new Date(a.ts));
 
   if (posts.length === 0) {
-    feed.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;opacity:.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>No hay publicaciones en esta categoría</p></div>';
+    feed.innerHTML = '<div class="empty-state empty-state-card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><h4>Sin publicaciones</h4><p>Cuando haya novedades en esta categoría, aparecerán aquí.</p></div>';
     return;
   }
   feed.innerHTML = posts.map(p => renderPost(p)).join('');
@@ -8982,7 +8982,7 @@ function renderPolicyTable() {
         + '<div style="display:flex;align-items:center;gap:9px">'
           + '<div style="width:32px;height:32px;border-radius:8px;background:' + emp.color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">' + emp.initials + '</div>'
           + '<div>'
-            + '<div style="font-weight:700;font-size:13px">' + emp.name.split(' ').slice(0,2).join(' ') + '</div>'
+            + '<div style="font-weight:700;font-size:14px;letter-spacing:-0.01em">' + emp.name.split(' ').slice(0,2).join(' ') + '</div>'
             + '<div style="font-size:11px;color:var(--c-muted)">' + flagIcon + ' ' + emp.dept
               + ' · <span style="color:var(--c-muted)">' + polLabel + '</span></div>'
           + '</div>'
@@ -9013,7 +9013,7 @@ function renderPolicyTable() {
 
   tbody.innerHTML = rows.length
     ? rows.join('')
-    : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--c-muted)">Sin resultados con los filtros aplicados</td></tr>';
+    : '<tr><td colspan="7"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><h4>Sin resultados</h4><p>Ningún colaborador coincide con los filtros aplicados. Probá ajustarlos.</p></div></td></tr>';
 
   // Update column header with dynamic season label
   const seasonTh = document.getElementById('th-season-col');
