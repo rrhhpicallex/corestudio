@@ -4334,29 +4334,29 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-headcount"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Evolución histórica del equipo</div>
+          <div class="rep-chart-title" data-tip="Barras = ingresos por año. Línea punteada = bajas.\nPermite ver el crecimiento neto del equipo a lo largo del tiempo.">Evolución histórica del equipo</div>
           <div class="rep-chart-sub">Ingresos por año · ···· Bajas por año</div>
           <svg class="chart-svg" id="chart-ingresos" height="200"></svg>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Colaboradores por área</div>
+          <div class="rep-chart-title" data-tip="Cantidad de colaboradores activos agrupados\npor departamento o área. Hacé click en una barra para ver las personas.">Colaboradores por área</div>
           <div class="rep-chart-sub">Distribución actual del equipo</div>
           <div id="chart-areas"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por nivel</div>
+          <div class="rep-chart-title" data-tip="Proporción del equipo por seniority: Junior,\nSemi Senior y Senior. Hacé click en un segmento para ver las personas.">Distribución por nivel</div>
           <div class="rep-chart-sub">Junior / Semi Senior / Senior</div>
           <div class="donut-wrap" id="chart-niveles"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por modalidad</div>
+          <div class="rep-chart-title" data-tip="Proporción del equipo por tipo de contrato:\nFull-time, Part-time y Consultor a Demanda.">Distribución por modalidad</div>
           <div class="rep-chart-sub">Full-time · Part-time · Consultor</div>
           <div class="donut-wrap" id="chart-modalidad"></div>
         </div>
       </div>
       <!-- ÚLTIMOS INGRESOS -->
       <div class="rep-chart-card full" style="margin-top:0">
-        <div class="rep-chart-title">Últimos ingresos al equipo</div>
+        <div class="rep-chart-title" data-tip="Los colaboradores más recientes ordenados\nde más nuevo a más antiguo. Hacé click para abrir el perfil.">Últimos ingresos al equipo</div>
         <div class="rep-chart-sub">Colaboradores incorporados más recientemente</div>
         <div id="rep-recent-hires"></div>
       </div>
@@ -4364,23 +4364,23 @@ a { color: inherit; text-decoration: none; }
       <!-- RETENCIÓN (movido desde tab propio) -->
       <div class="rep-kpis" id="rep-kpis-retencion" style="margin-top:8px"></div>
       <div class="rep-chart-card full" style="margin-bottom:18px">
-        <div class="rep-chart-title">📊 Benchmark — Mercado IT Argentina 2024–2025</div>
+        <div class="rep-chart-title" data-tip="Comparativa de los principales KPIs de PicallEx\ncontra benchmarks del mercado IT Argentina 2024–2025.\nFuente: informes sectoriales y encuestas de RRHH IT.">📊 Benchmark — Mercado IT Argentina 2024–2025</div>
         <div class="rep-chart-sub">Comparativa de indicadores clave vs. promedios del sector</div>
         <div id="chart-benchmark"></div>
       </div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Tasa de retención por área</div>
+          <div class="rep-chart-title" data-tip="Estimación de retención por área basada en\nantigüedad promedio de los colaboradores activos.">Tasa de retención por área</div>
           <div class="rep-chart-sub">% de permanencia en los últimos 12 meses</div>
           <div id="chart-retencion-area"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por ventana de riesgo</div>
+          <div class="rep-chart-title" data-tip="Clasifica el equipo en bajo, medio y alto riesgo de\negreso según un score que pondera antigüedad, seniority y modalidad.">Distribución por ventana de riesgo</div>
           <div class="rep-chart-sub">Basado en antigüedad + nivel + modalidad</div>
           <div class="donut-wrap" id="chart-riesgo-donut"></div>
         </div>
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Índice de riesgo individual</div>
+          <div class="rep-chart-title" data-tip="Score 0–100 por persona. Factores: sin progresión de nivel,\nantigüedad en ventana crítica (1.5–3 años), modalidad flexible, sin licencias tomadas.">Índice de riesgo individual</div>
           <div class="rep-chart-sub">Score calculado: antigüedad estancada · nivel sin progresión · modalidad · contrato</div>
           <div id="chart-riesgo-individual"></div>
         </div>
@@ -4394,27 +4394,27 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-licencias"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Tipo de licencia más usado</div>
+          <div class="rep-chart-title" data-tip="Cantidad de solicitudes agrupadas por tipo de licencia\n(vacaciones, estudio, enfermedad, etc.) en el año seleccionado.">Tipo de licencia más usado</div>
           <div class="rep-chart-sub">Solicitudes por tipo · año seleccionado</div>
           <div id="chart-lic-tipos"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Estacionalidad — picos por mes</div>
+          <div class="rep-chart-title" data-tip="Total de días de licencia solicitados por mes.\nIdentifica los períodos de mayor ausentismo durante el año.">Estacionalidad — picos por mes</div>
           <div class="rep-chart-sub">¿En qué meses se piden más licencias?</div>
           <svg class="chart-svg" id="chart-lic-mes-bar" height="180"></svg>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Solicitudes por año</div>
+          <div class="rep-chart-title" data-tip="Total de solicitudes de licencia por año.\nPermite ver si el uso de licencias crece con el equipo.">Solicitudes por año</div>
           <div class="rep-chart-sub">Tendencia histórica de licencias pedidas</div>
           <svg class="chart-svg" id="chart-lic-anio" height="180"></svg>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Estado de solicitudes</div>
+          <div class="rep-chart-title" data-tip="Distribución de solicitudes por estado:\naprobadas, pendientes y rechazadas en el período seleccionado.">Estado de solicitudes</div>
           <div class="rep-chart-sub">Aprobadas · Pendientes · Rechazadas</div>
           <div class="donut-wrap" id="chart-lic-status"></div>
         </div>
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Top colaboradores por días tomados</div>
+          <div class="rep-chart-title" data-tip="Ranking de colaboradores por total de días de licencia\naprobados en el período seleccionado. Útil para detectar patrones.">Top colaboradores por días tomados</div>
           <div class="rep-chart-sub">Suma de días de licencia aprobados · año seleccionado</div>
           <div id="chart-lic-top"></div>
         </div>
@@ -4426,17 +4426,17 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-estructura"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por país</div>
+          <div class="rep-chart-title" data-tip="Proporción del equipo activo por país de ubicación.\nHacé click en un segmento para ver quiénes están en ese país.">Distribución por país</div>
           <div class="rep-chart-sub">Argentina · Colombia · USA</div>
           <div id="chart-paises"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Antigüedad promedio por área</div>
+          <div class="rep-chart-title" data-tip="Promedio de años en PicallEx agrupado por área.\nÁreas con mayor antigüedad reflejan mayor estabilidad.">Antigüedad promedio por área</div>
           <div class="rep-chart-sub">Años de permanencia en PicallEx</div>
           <div id="chart-antiguedad"></div>
         </div>
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Colaboradores con más antigüedad</div>
+          <div class="rep-chart-title" data-tip="Los 10 colaboradores con más años en PicallEx,\nordenados de mayor a menor antigüedad.">Colaboradores con más antigüedad</div>
           <div class="rep-chart-sub">Años en PicallEx · Top 10</div>
           <div id="chart-top-antiguedad"></div>
         </div>
@@ -4450,22 +4450,22 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-evolucion"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Crecimiento del equipo — Historia PCX</div>
+          <div class="rep-chart-title" data-tip="Headcount acumulado año a año desde la fundación de PicallEx.\nMuestra la curva de crecimiento total de la empresa.">Crecimiento del equipo — Historia PCX</div>
           <div class="rep-chart-sub">Colaboradores acumulados desde los orígenes hasta hoy</div>
           <svg class="chart-svg" id="chart-crecimiento" height="200"></svg>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Ingresos por año</div>
+          <div class="rep-chart-title" data-tip="Nuevas incorporaciones por año (últimos 8 años).\nUna caída puede indicar pausa en contrataciones.">Ingresos por año</div>
           <div class="rep-chart-sub">Nuevas incorporaciones anuales</div>
           <svg class="chart-svg" id="chart-ingresos-anio" height="180"></svg>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Licencias por mes — picos estacionales</div>
+          <div class="rep-chart-title" data-tip="Días de licencia aprobados por mes (todos los años).\nIdentifica los meses de mayor impacto en disponibilidad.">Licencias por mes — picos estacionales</div>
           <div class="rep-chart-sub">Total de días de licencia solicitados por mes</div>
           <div id="chart-lic-mes"></div>
         </div>
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Evolución del seniority a lo largo del tiempo</div>
+          <div class="rep-chart-title" data-tip="Composición del equipo por nivel de seniority en los últimos 5 años.\nMuestra cómo fue madurando la pirámide de experiencia en PicallEx.">Evolución del seniority a lo largo del tiempo</div>
           <div class="rep-chart-sub">Cómo maduró el equipo en niveles de experiencia</div>
           <div id="chart-seniority-evol"></div>
         </div>
@@ -4477,27 +4477,27 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-diversidad"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por género</div>
+          <div class="rep-chart-title" data-tip="Proporción de mujeres y hombres en el equipo activo.\nInferido desde nombres; puede no reflejar identidad autopercibida.">Distribución por género</div>
           <div class="rep-chart-sub">Composición del equipo</div>
           <div class="donut-wrap" id="chart-genero"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución por rango etario</div>
+          <div class="rep-chart-title" data-tip="Colaboradores agrupados por franja etaria.\nHacé click en un segmento para ver quiénes están en ese rango.">Distribución por rango etario</div>
           <div class="rep-chart-sub">Franjas de edad del equipo</div>
           <div class="donut-wrap" id="chart-edad"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Género por área</div>
+          <div class="rep-chart-title" data-tip="Desglose de mujeres y hombres por área.\nPermite detectar desequilibrios de género en departamentos específicos.">Género por área</div>
           <div class="rep-chart-sub">Composición por departamento</div>
           <div id="chart-genero-area"></div>
         </div>
         <div class="rep-chart-card">
-          <div class="rep-chart-title">Distribución geográfica</div>
+          <div class="rep-chart-title" data-tip="Distribución del equipo por país de ubicación.\nHacé click en un segmento para ver quiénes trabajan desde ese país.">Distribución geográfica</div>
           <div class="rep-chart-sub">Colaboradores por país</div>
           <div class="donut-wrap" id="chart-geo"></div>
         </div>
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Seniority por género</div>
+          <div class="rep-chart-title" data-tip="Comparación del nivel de seniority entre mujeres y hombres.\nÚtil para detectar brechas de progresión por género.">Seniority por género</div>
           <div class="rep-chart-sub">Distribución de niveles según género identificado</div>
           <div id="chart-sr-genero"></div>
         </div>
@@ -4509,7 +4509,7 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-bajas"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card full">
-          <div class="rep-chart-title">Historial de bajas</div>
+          <div class="rep-chart-title" data-tip="Lista completa de bajas registradas: colaboradores\ncon estado inactivo o egresados manualmente en el sistema.">Historial de bajas</div>
           <div class="rep-chart-sub">Colaboradores dados de baja en el sistema</div>
           <div id="bajas-table-wrap">
             <div style="padding:32px;text-align:center;color:var(--c-muted);font-size:14px">
@@ -7083,7 +7083,7 @@ function makeBarChart(svgId, data, color, clickFn) {
     const y  = pad.top  + cH - bh;
     const c  = Array.isArray(color) ? (color[i] || CHART_COLORS[i % CHART_COLORS.length]) : (color || CHART_COLORS[i % CHART_COLORS.length]);
     const clickAttr = clickFn ? ` onclick="${clickFn}('${svgId}',${i})" style="cursor:pointer"` : '';
-    out += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${c}"${clickAttr}><title>${d.label}: ${d.value}</title></rect>`;
+    out += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="${c}"${clickAttr} data-tip="${d.label}: ${d.value}"></rect>`;
     if (d.value > 0) out += `<text class="chart-value" x="${(x+bw/2).toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle">${d.value}</text>`;
     // Truncate label
     const lbl = d.label.length > 5 ? d.label.slice(0,5) : d.label;
@@ -7102,7 +7102,7 @@ function makeHBars(containerId, data, maxVal, clickFn) {
     const pct = Math.max(2, Math.round((d.value/max)*100));
     const c = d.color || CHART_COLORS[i % CHART_COLORS.length];
     const clickAttr = clickFn ? ` onclick="${clickFn}('${containerId}',${i})" style="cursor:pointer"` : '';
-    return `<div class="hbar-row"${clickAttr} title="${d.label}: ${d.value}">
+    return `<div class="hbar-row"${clickAttr} data-tip="${d.label}: ${d.value}">
       <div class="hbar-label" title="${d.label}">${d.label}</div>
       <div class="hbar-track">
         <div class="hbar-fill" style="width:${pct}%;background:${c}">
@@ -7134,13 +7134,13 @@ function makeDonut(containerId, data, size=140, clickFn) {
     const c = d.color || CHART_COLORS[i%CHART_COLORS.length];
     const pct = Math.round(d.value/total*100);
     const clickAttr = clickFn ? ` onclick="${clickFn}('${containerId}',${i})" style="cursor:pointer"` : '';
-    slices += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${large},1,${x2.toFixed(1)},${y2.toFixed(1)} L${ix2.toFixed(1)},${iy2.toFixed(1)} A${innerR},${innerR},0,${large},0,${ix1.toFixed(1)},${iy1.toFixed(1)} Z" fill="${c}" opacity=".9"${clickAttr}><title>${d.label}: ${d.value} (${pct}%)</title></path>`;
+    slices += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${large},1,${x2.toFixed(1)},${y2.toFixed(1)} L${ix2.toFixed(1)},${iy2.toFixed(1)} A${innerR},${innerR},0,${large},0,${ix1.toFixed(1)},${iy1.toFixed(1)} Z" fill="${c}" opacity=".9"${clickAttr} data-tip="${d.label}: ${d.value} (${pct}%)"></path>`;
   });
   const legend = data.map((d,i) => {
     const c = d.color || CHART_COLORS[i%CHART_COLORS.length];
     const pct = Math.round(d.value/total*100);
     const clickAttr = clickFn ? ` onclick="${clickFn}('${containerId}',${i})" style="cursor:pointer"` : '';
-    return `<div class="donut-legend-item"${clickAttr}>
+    return `<div class="donut-legend-item"${clickAttr} data-tip="${d.label}: ${d.value} (${pct}%)">
       <div class="donut-dot" style="background:${c}"></div>
       <span>${d.label}</span>
       <span class="donut-legend-num">${d.value}</span>
@@ -7207,12 +7207,12 @@ function renderHeadcount() {
 
   // KPIs
   document.getElementById('rep-kpis-headcount').innerHTML = [
-    { icon:'👥', num: active.length,                   label: 'Activos totales' },
-    { icon:'🚀', num: newThisYear,                      label: `Ingresos ${thisYear}` },
-    { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países' },
-    { icon:'📐', num: [...new Set(active.map(e=>normalizeDept(e.dept)))].length,    label: 'Áreas' },
-    { icon:'⏱️', num: avgTenure + ' años',              label: 'Antigüedad promedio' },
-  ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
+    { icon:'👥', num: active.length,                   label: 'Activos totales',      tip: 'Total de colaboradores con estado activo.\nNo incluye bajas ni terminados.' },
+    { icon:'🚀', num: newThisYear,                      label: `Ingresos ${thisYear}`, tip: `Nuevos colaboradores que ingresaron durante ${thisYear}.` },
+    { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países', tip: 'Cantidad de países distintos desde los que\nopera el equipo actualmente.' },
+    { icon:'📐', num: [...new Set(active.map(e=>normalizeDept(e.dept)))].length, label: 'Áreas', tip: 'Departamentos o equipos con al menos\nun colaborador activo.' },
+    { icon:'⏱️', num: avgTenure + ' años',              label: 'Antigüedad promedio',  tip: 'Promedio de años de permanencia en PicallEx\nde todos los colaboradores activos.' },
+  ].map(k=>`<div class="rep-kpi" data-tip="${k.tip}"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
   // Combo chart: ingresos y bajas por año (histórico completo)
   const allEmps = DB.employees; // incluye activos e inactivos
@@ -7328,11 +7328,11 @@ function renderLicenciasRepCharts() {
   const yearLabel = window._licYear === 'all' ? 'histórico' : window._licYear;
 
   document.getElementById('rep-kpis-licencias').innerHTML = [
-    { icon:'📋', num: reqs.length,      label: `Solicitudes (${yearLabel})` },
-    { icon:'✅', num: approved.length,  label: 'Aprobadas' },
-    { icon:'⏳', num: pending.length,   label: 'Pendientes' },
-    { icon:'📅', num: totalDays,        label: 'Días tomados' },
-  ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
+    { icon:'📋', num: reqs.length,      label: `Solicitudes (${yearLabel})`, tip: 'Total de solicitudes de licencia registradas\nen el período seleccionado (todos los estados).' },
+    { icon:'✅', num: approved.length,  label: 'Aprobadas',                  tip: 'Solicitudes con estado "aprobado"\nen el período seleccionado.' },
+    { icon:'⏳', num: pending.length,   label: 'Pendientes',                 tip: 'Solicitudes aún sin revisión\no en proceso de aprobación.' },
+    { icon:'📅', num: totalDays,        label: 'Días tomados',               tip: 'Suma de días de todas las solicitudes\naprobadas en el período seleccionado.' },
+  ].map(k=>`<div class="rep-kpi" data-tip="${k.tip}"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
   // Por tipo — horizontal bars
   const typeCount = {};
@@ -7396,11 +7396,11 @@ function renderEstructura() {
   },0) / active.filter(e=>e.dob).length).toFixed(0);
 
   document.getElementById('rep-kpis-estructura').innerHTML = [
-    { icon:'⭐', num: seniorCount, label: 'Seniority Senior' },
-    { icon:'👔', num: leaders,     label: 'Con reportes directos' },
-    { icon:'🎂', num: avgAge+' años', label: 'Edad promedio' },
-    { icon:'🌎', num: active.filter(e=>e.country!=='Argentina').length, label: 'Fuera de Argentina' },
-  ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
+    { icon:'⭐', num: seniorCount,  label: 'Seniority Senior',      tip: 'Colaboradores activos con nivel Senior,\nque aportan experiencia y mentoring al equipo.' },
+    { icon:'👔', num: leaders,      label: 'Con reportes directos', tip: 'Líderes con al menos un colaborador\nque les reporta directamente.' },
+    { icon:'🎂', num: avgAge+' años', label: 'Edad promedio',       tip: 'Promedio de edad de todos los colaboradores\nactivos (calculado desde la fecha de nacimiento).' },
+    { icon:'🌎', num: active.filter(e=>e.country!=='Argentina').length, label: 'Fuera de Argentina', tip: 'Colaboradores activos ubicados\nfuera de Argentina.' },
+  ].map(k=>`<div class="rep-kpi" data-tip="${k.tip}"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
   // Países
   const pc = {};
@@ -7455,10 +7455,10 @@ function renderBajasRep() {
   const activeCount = DB.employees.filter(e=>e.status!=='inactivo').length;
 
   document.getElementById('rep-kpis-bajas').innerHTML = [
-    { icon:'📉', num: bajas.length,     label: 'Total bajas registradas' },
-    { icon:'👥', num: activeCount,       label: 'Colaboradores activos' },
-    { icon:'📊', num: bajas.length > 0 ? (bajas.length/(bajas.length+activeCount)*100).toFixed(1)+'%' : '0%', label: 'Tasa de rotación' },
-  ].map(k=>`<div class="rep-kpi"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
+    { icon:'📉', num: bajas.length,     label: 'Total bajas registradas', tip: 'Cantidad de colaboradores que dejaron\nla empresa (inactivos + egresados manuales).' },
+    { icon:'👥', num: activeCount,       label: 'Colaboradores activos',  tip: 'Total de colaboradores con estado activo\nen este momento.' },
+    { icon:'📊', num: bajas.length > 0 ? (bajas.length/(bajas.length+activeCount)*100).toFixed(1)+'%' : '0%', label: 'Tasa de rotación', tip: 'Bajas / (Activos + Bajas) × 100.\nMide qué porcentaje del equipo ha egresado.' },
+  ].map(k=>`<div class="rep-kpi" data-tip="${k.tip}"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div></div>`).join('');
 
   const wrap = document.getElementById('bajas-table-wrap');
   if (!wrap) return;
@@ -8298,11 +8298,11 @@ function renderRetencion() {
 
   // KPIs
   document.getElementById('rep-kpis-retencion').innerHTML = [
-    { icon:'🔒', num: retRate + '%', label: 'Tasa de retención', sub: 'Mercado IT ARG: ~72%' },
-    { icon:'📉', num: rotRate + '%', label: 'Tasa de rotación', sub: 'Mercado IT ARG: ~28%' },
-    { icon:'⏱️', num: avgTenure + ' años', label: 'Antigüedad promedio', sub: 'Benchmark: 2.1 años' },
-    { icon:'⚠️', num: calcRiesgoAlto(active), label: 'En riesgo alto', sub: 'Score > 70' },
-  ].map(k => '<div class="rep-kpi"><div class="rep-kpi-icon">' + k.icon + '</div>'
+    { icon:'🔒', num: retRate + '%', label: 'Tasa de retención', sub: 'Mercado IT ARG: ~72%', tip: 'Activos / (Activos + Bajas) × 100.\nBenchmark IT Argentina: ~72%.' },
+    { icon:'📉', num: rotRate + '%', label: 'Tasa de rotación',  sub: 'Mercado IT ARG: ~28%', tip: 'Bajas / (Activos + Bajas) × 100.\nBenchmark IT Argentina: ~28%.' },
+    { icon:'⏱️', num: avgTenure + ' años', label: 'Antigüedad promedio', sub: 'Benchmark: 2.1 años', tip: 'Promedio de años en PicallEx de todos\nlos activos. Benchmark IT ARG: 2.1 años.' },
+    { icon:'⚠️', num: calcRiesgoAlto(active), label: 'En riesgo alto', sub: 'Score > 70', tip: 'Colaboradores con score de riesgo de\negreso > 70 (basado en antigüedad, nivel y modalidad).' },
+  ].map(k => '<div class="rep-kpi" data-tip="' + k.tip + '"><div class="rep-kpi-icon">' + k.icon + '</div>'
     + '<div class="rep-kpi-num">' + k.num + '</div>'
     + '<div class="rep-kpi-label">' + k.label + '</div>'
     + '<div style="font-size:10px;color:var(--c-muted);margin-top:3px">' + k.sub + '</div></div>'
@@ -8429,11 +8429,11 @@ function renderEvolucion() {
   const growthPct = lastYearCount > 0 ? Math.round((thisYearCount - lastYearCount) / lastYearCount * 100) : 0;
 
   document.getElementById('rep-kpis-evolucion').innerHTML = [
-    { icon:'📅', num: String(firstYear), label: 'Año de fundación PCX' },
-    { icon:'📈', num: active.length, label: 'Equipo actual' },
-    { icon:'🚀', num: thisYearCount, label: 'Ingresos ' + thisYear },
-    { icon:'📊', num: (growthPct >= 0 ? '+' : '') + growthPct + '%', label: 'Crecimiento vs año anterior' },
-  ].map(k => '<div class="rep-kpi"><div class="rep-kpi-icon">' + k.icon + '</div>'
+    { icon:'📅', num: String(firstYear), label: 'Año de fundación PCX',         tip: 'Año en que se incorporó el primer\ncolaborador activo registrado en el sistema.' },
+    { icon:'📈', num: active.length,     label: 'Equipo actual',                tip: 'Total de colaboradores con estado activo\nregistrados en PicallEx hoy.' },
+    { icon:'🚀', num: thisYearCount,     label: 'Ingresos ' + thisYear,         tip: 'Nuevos colaboradores que ingresaron\ndurante el año ' + thisYear + '.' },
+    { icon:'📊', num: (growthPct >= 0 ? '+' : '') + growthPct + '%', label: 'Crecimiento vs año anterior', tip: 'Variación porcentual del headcount\nentre ' + (thisYear-1) + ' y ' + thisYear + '.' },
+  ].map(k => '<div class="rep-kpi" data-tip="' + k.tip + '"><div class="rep-kpi-icon">' + k.icon + '</div>'
     + '<div class="rep-kpi-num">' + k.num + '</div>'
     + '<div class="rep-kpi-label">' + k.label + '</div></div>'
   ).join('');
@@ -8620,11 +8620,11 @@ function renderDiversidad() {
 
   // KPIs
   document.getElementById('rep-kpis-diversidad').innerHTML = [
-    { icon:'♀️', num: fem + ' (' + pctF + '%)', label: 'Mujeres en el equipo' },
-    { icon:'♂️', num: masc + ' (' + (100-pctF) + '%)', label: 'Hombres en el equipo' },
-    { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países representados' },
-    { icon:'📊', num: calcAvgAge(active) + ' años', label: 'Edad promedio' },
-  ].map(k => '<div class="rep-kpi"><div class="rep-kpi-icon">' + k.icon + '</div>'
+    { icon:'♀️', num: fem + ' (' + pctF + '%)', label: 'Mujeres en el equipo',    tip: 'Colaboradoras activas y su porcentaje\nsobre el total del equipo.' },
+    { icon:'♂️', num: masc + ' (' + (100-pctF) + '%)', label: 'Hombres en el equipo', tip: 'Colaboradores activos masculinos y su\nporcentaje sobre el total del equipo.' },
+    { icon:'🌍', num: [...new Set(active.map(e=>e.country))].length, label: 'Países representados', tip: 'Cantidad de países distintos desde los\nque opera el equipo actualmente.' },
+    { icon:'📊', num: calcAvgAge(active) + ' años', label: 'Edad promedio',         tip: 'Edad promedio de todos los colaboradores\nactivos (calculado desde fecha de nacimiento).' },
+  ].map(k => '<div class="rep-kpi" data-tip="' + k.tip + '"><div class="rep-kpi-icon">' + k.icon + '</div>'
     + '<div class="rep-kpi-num">' + k.num + '</div>'
     + '<div class="rep-kpi-label">' + k.label + '</div></div>'
   ).join('');
