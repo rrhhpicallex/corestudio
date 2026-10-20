@@ -6060,6 +6060,7 @@ function openLDP(dataStr) {
     const isAdmin = (currentUser?.role === 'admin');
     const isPending = req && req.status === 'pendiente';
     actionRow.style.display = (isAdmin && isPending) ? 'flex' : 'none';
+    actionRow.style.flexDirection = 'column';
   }
 
   document.getElementById('ldp-overlay').classList.add('open');
@@ -9372,9 +9373,14 @@ function renderPolicyTable() {
         <div id="ldp-approvers-list"></div>
       </div>
       <!-- Acciones HR (solo admin, solo pendiente) -->
-      <div id="ldp-action-row" style="display:none;margin-top:16px;display:flex;gap:8px">
-        <button class="approve-btn" style="flex:1;padding:10px 0;font-size:14px" onclick="ldpApprove(event)">✓ Aprobar</button>
-        <button class="reject-btn"  style="flex:1;padding:10px 0;font-size:14px" onclick="ldpReject(event)">✗ Rechazar</button>
+      <div id="ldp-action-row" style="display:none;margin-top:16px;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px">
+          <button class="approve-btn" style="flex:1;padding:10px 0;font-size:14px" onclick="ldpApprove(event)">✓ Aprobar</button>
+          <button class="reject-btn"  style="flex:1;padding:10px 0;font-size:14px" onclick="ldpReject(event)">✗ Rechazar</button>
+        </div>
+        <div id="ldp-hr-note" style="font-size:11px;color:var(--c-muted);text-align:center;padding:4px 0">
+          Como HR podés aprobar en nombre del manager si es necesario.
+        </div>
       </div>
     </div>
   </div>
