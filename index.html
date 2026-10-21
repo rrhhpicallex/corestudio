@@ -4388,11 +4388,6 @@ a { color: inherit; text-decoration: none; }
           <div class="rep-chart-sub">Basado en antigüedad + nivel + modalidad</div>
           <div class="donut-wrap" id="chart-riesgo-donut"></div>
         </div>
-        <div class="rep-chart-card full">
-          <div class="rep-chart-title" data-tip="Score 0–100 por persona. Factores: sin progresión de nivel,\nantigüedad en ventana crítica (1.5–3 años), modalidad flexible, sin licencias tomadas.">Índice de riesgo individual</div>
-          <div class="rep-chart-sub">Score calculado: antigüedad estancada · nivel sin progresión · modalidad · contrato</div>
-          <div id="chart-riesgo-individual"></div>
-        </div>
       </div>
     </div>
 
@@ -8561,29 +8556,6 @@ function renderRetencion() {
     { label:'Riesgo bajo',  value: bajo,  color:'#4caf50' },
   ].filter(d => d.value > 0));
 
-  // Riesgo individual top 10
-  const riesgoList = active.map(e => ({
-    emp: e, score: calcRiesgoScore(e), reasons: getRiesgoReasons(e)
-  })).sort((a,b) => b.score - a.score).slice(0, 12);
-
-  const rEl = document.getElementById('chart-riesgo-individual');
-  if (rEl) {
-    rEl.innerHTML = riesgoList.map(r => {
-      const level = r.score >= 70 ? 'alto' : r.score >= 40 ? 'medio' : 'bajo';
-      const label = r.score >= 70 ? '⚠ Alto' : r.score >= 40 ? '~ Medio' : '✓ Bajo';
-      return '<div class="hbar-row" style="align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--c-border-light)">'
-        + '<div style="display:flex;align-items:center;gap:8px;min-width:200px">'
-          + '<div style="width:30px;height:30px;border-radius:8px;background:' + r.emp.color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">' + r.emp.initials + '</div>'
-          + '<div><div style="font-size:13px;font-weight:600">' + r.emp.name.split(' ').slice(0,2).join(' ') + '</div>'
-          + '<div style="font-size:11px;color:var(--c-muted)">' + r.emp.dept + ' · ' + r.emp.level + '</div></div>'
-        + '</div>'
-        + '<div class="hbar-track" style="margin:0 12px"><div class="hbar-fill" style="width:' + r.score + '%;background:' + (level==='alto'?'#e53935':level==='medio'?'#f9a825':'#4caf50') + '">'
-          + (r.score > 15 ? '<span>' + r.score + '</span>' : '') + '</div></div>'
-        + '<span class="riesgo-badge riesgo-' + level + '">' + label + '</span>'
-        + '<div style="font-size:11px;color:var(--c-muted);min-width:180px;padding-left:10px">' + r.reasons.join(' · ') + '</div>'
-      + '</div>';
-    }).join('');
-  }
 }
 
 function calcRiesgoScore(emp) {
