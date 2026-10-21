@@ -4338,14 +4338,9 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-kpis" id="rep-kpis-headcount"></div>
       <div class="rep-chart-grid">
         <div class="rep-chart-card">
-          <div class="rep-chart-title" data-tip="Barras verdes = ingresos del año. Barras rojas = bajas del año.\nLínea azul = headcount total acumulado. Hacé click en una barra verde para ver quiénes ingresaron.">Evolución histórica del equipo</div>
-          <div class="rep-chart-sub">🟢 Ingresos · 🔴 Bajas · — Total acumulado</div>
+          <div class="rep-chart-title" data-tip="Headcount real al cierre de cada año:\ncolaboradores que ya habían ingresado y aún no habían egresado.">Headcount histórico del equipo</div>
+          <div class="rep-chart-sub">Colaboradores activos al cierre de cada año</div>
           <svg class="chart-svg" id="chart-ingresos" height="220"></svg>
-          <div id="chart-ingresos-legend" style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
-            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:10px;height:10px;border-radius:3px;background:#4caf50"></div>Ingresos</div>
-            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:10px;height:10px;border-radius:3px;background:#ef5350"></div>Bajas</div>
-            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted)"><div style="width:12px;height:2px;border-radius:2px;background:#1565c0"></div>Total</div>
-          </div>
         </div>
         <div class="rep-chart-card">
           <div class="rep-chart-title" data-tip="Cantidad de colaboradores activos agrupados\npor departamento o área. Hacé click en una barra para ver las personas.">Colaboradores por área</div>
@@ -7298,28 +7293,23 @@ function renderHeadcount() {
     { key:'hc-antiguedad',icon:'⏱️', num: avgTenure + ' años',   label: 'Antigüedad promedio',  tip: 'Promedio de años de permanencia en PicallEx\nde todos los colaboradores activos.\n👆 Hacé click para ver el top.' },
   ].map(k=>`<div class="rep-kpi rep-kpi-clickable" data-tip="${k.tip}" onclick="onKpiClick('${k.key}')"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div><div class="rep-kpi-click-hint">Ver detalle →</div></div>`).join('');
 
-  // Combo chart: ingresos y bajas por año (histórico completo)
-  const allEmps = DB.employees; // incluye activos e inactivos
+  // Línea de headcount real: colaboradores activos al 31-dic de cada año
+  const allEmps = DB.employees;
   const firstHireYear = Math.min(...allEmps.filter(e=>e.hire_date).map(e=>parseInt(e.hire_date.split('-')[0])));
   const years = [];
   for (let y = (isNaN(firstHireYear) ? thisYear-5 : firstHireYear); y <= thisYear; y++) years.push(y);
 
-  // Bajas por año — usa DB.bajas (todas las bajas con fecha)
-  const bajasAll = (DB.bajas || []).filter(b => b.baja_date);
-  const bajasIds = new Set(bajasAll.map(b=>b.emp_id));
-  allEmps.filter(e=>e.status==='terminated' && e.end_date && !bajasIds.has(e.id))
-    .forEach(e=>bajasAll.push({ emp_id:e.id, baja_date: e.end_date, name: e.name, dept: e.dept }));
+  const headcountData = years.map(y => {
+    const eoy = `${y}-12-31`;
+    const count = allEmps.filter(e => {
+      if (!e.hire_date || e.hire_date > eoy) return false; // no había ingresado aún
+      const end = e.end_date || e.termination_date || null;
+      return !end || end > eoy; // no había egresado aún
+    }).length;
+    return { label: String(y), value: count };
+  });
 
-  const barData = years.map(y => ({
-    label: String(y),
-    value: allEmps.filter(e => e.hire_date?.startsWith(String(y))).length,
-    emps:  allEmps.filter(e => e.hire_date?.startsWith(String(y)))
-  }));
-  const lineData = years.map(y => ({
-    value: bajasAll.filter(b => (b.baja_date||'').startsWith(String(y))).length
-  }));
-
-  makeComboBarLine('chart-ingresos', barData, lineData);
+  makeLineChart('chart-ingresos', headcountData, 'var(--c-accent)');
 
   // Horizontal bars by dept
   const deptCount = {};
@@ -7412,23 +7402,32 @@ function renderLicenciasRepCharts() {
   const totalDays = approved.reduce((s,r)=>s+(r.days||0),0);
   const yearLabel = window._licYear === 'all' ? 'histórico' : window._licYear;
 
-  // Precompute drill-down data for licencias KPIs
-  const licTypeGroups = Object.entries((() => { const tc={}; reqs.forEach(r=>tc[r.type||'Otro']=(tc[r.type||'Otro']||0)+1); return tc; })())
-    .sort((a,b)=>b[1]-a[1]).map(([k,v])=>({ label:`${k} (${v} solicitudes)`, emps: reqs.filter(r=>(r.type||'Otro')===k).map(r=>r.emp).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i) }));
-  window._kpiData['lic-total']    = { title:`Solicitudes ${yearLabel}`, grouped: true, groups: licTypeGroups };
-  window._kpiData['lic-aprobadas']= { title:'Solicitudes aprobadas', emps: [...new Map(approved.map(r=>[r.emp.id,r.emp])).values()] };
-  window._kpiData['lic-pendientes']={ title:'Solicitudes pendientes', emps: [...new Map(pending.map(r=>[r.emp.id,r.emp])).values()] };
-  window._kpiData['lic-dias']     = { title:'Días tomados por colaborador', grouped: true, groups: (() => {
-    const empD = {}; approved.forEach(r => { if(!empD[r.emp.id]){empD[r.emp.id]={label:r.emp.name+' — '+r.emp.title,emps:[r.emp],_days:0};} empD[r.emp.id]._days+=(r.days||0); });
-    return Object.values(empD).sort((a,b)=>b._days-a._days).map(g=>({label:`${g.label.split('—')[0].trim()} · ${g._days} días`, emps:g.emps}));
-  })() };
+  // KPI: tipo más solicitado
+  const typeCount2 = {};
+  reqs.forEach(r => typeCount2[r.type||'Otro'] = (typeCount2[r.type||'Otro']||0)+1);
+  const topType = Object.entries(typeCount2).sort((a,b)=>b[1]-a[1])[0];
+  const topTypeLabel = topType ? topType[0] : '—';
+  const topTypeCount = topType ? topType[1] : 0;
+
+  // KPI: días promedio por solicitud aprobada
+  const avgDays = approved.length ? Math.round(totalDays / approved.length * 10) / 10 : 0;
+
+  // KPI: personas únicas que tomaron alguna licencia aprobada
+  const uniquePeople = new Set(approved.map(r => r.emp.id)).size;
+  const activeCount = DB.employees.filter(e => e.status === 'active').length;
+
+  // Drill-down data
+  window._kpiData['lic-tipo']     = { title: `Tipo más solicitado: ${topTypeLabel}`, grouped: true,
+    groups: Object.entries(typeCount2).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({ label:`${k} · ${v} solicitudes`, emps: reqs.filter(r=>(r.type||'Otro')===k).map(r=>r.emp).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i) })) };
+  window._kpiData['lic-promedio'] = { title: 'Días promedio por solicitud', grouped: true,
+    groups: Object.entries(typeCount2).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({ label:`${k} · prom. ${Math.round((approved.filter(r=>r.type===k).reduce((s,r)=>s+(r.days||0),0)/(approved.filter(r=>r.type===k).length||1))*10)/10}d`, emps: approved.filter(r=>r.type===k).map(r=>r.emp).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i) })) };
+  window._kpiData['lic-personas'] = { title: `Personas que tomaron licencia (${yearLabel})`, emps: [...new Map(approved.map(r=>[r.emp.id,r.emp])).values()] };
 
   document.getElementById('rep-kpis-licencias').innerHTML = [
-    { key:'lic-total',     icon:'📋', num: reqs.length,      label: `Solicitudes (${yearLabel})`, tip: 'Total de solicitudes registradas (todos los estados).\nCada vez que alguien pide una licencia cuenta como 1.\n👆 Ver desglose por tipo.' },
-    { key:'lic-aprobadas', icon:'✅', num: approved.length,  label: 'Aprobadas',                  tip: 'Solicitudes con estado "aprobado"\nen el período seleccionado.\n👆 Ver quiénes tienen aprobadas.' },
-    { key:'lic-pendientes',icon:'⏳', num: pending.length,   label: 'Pendientes',                 tip: 'Solicitudes aún sin revisión\no en proceso de aprobación.\n👆 Ver quiénes tienen pendientes.' },
-    { key:'lic-dias',      icon:'📅', num: totalDays,        label: 'Días tomados',               tip: 'Suma de días de solicitudes aprobadas\nen el período. No incluye pendientes.\n👆 Ver ranking por persona.' },
-  ].map(k=>`<div class="rep-kpi rep-kpi-clickable" data-tip="${k.tip}" onclick="onKpiClick('${k.key}')"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num">${k.num}</div><div class="rep-kpi-label">${k.label}</div><div class="rep-kpi-click-hint">Ver detalle →</div></div>`).join('');
+    { key:'lic-tipo',     icon:'🏆', num: topTypeLabel,             label: 'Tipo más solicitado', tip: `La licencia más pedida en ${yearLabel}.\n${topTypeCount} solicitudes.\n👆 Ver desglose por tipo.` },
+    { key:'lic-promedio', icon:'📏', num: avgDays + 'd',            label: 'Promedio por solicitud', tip: 'Duración promedio de cada solicitud aprobada.\n👆 Ver por tipo de licencia.' },
+    { key:'lic-personas', icon:'👥', num: `${uniquePeople}/${activeCount}`, label: 'Tomaron licencia', tip: `${uniquePeople} de ${activeCount} colaboradores activos\ntomaron al menos una licencia aprobada en ${yearLabel}.\n👆 Ver quiénes son.` },
+  ].map(k=>`<div class="rep-kpi rep-kpi-clickable" data-tip="${k.tip}" onclick="onKpiClick('${k.key}')"><div class="rep-kpi-icon">${k.icon}</div><div class="rep-kpi-num" style="font-size:${String(k.num).length>8?'16px':''}">${k.num}</div><div class="rep-kpi-label">${k.label}</div><div class="rep-kpi-click-hint">Ver detalle →</div></div>`).join('');
 
   // Por tipo — horizontal bars
   const typeCount = {};
