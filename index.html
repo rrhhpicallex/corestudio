@@ -7080,7 +7080,7 @@ const DEPT_COLORS = {
 function normalizeDept(d) {
   if (!d) return d;
   if (['BackEnd','Backend','FrontEnd','Frontend','backEnd','frontEnd'].includes(d)) return 'Desarrollo';
-  if (['Comercial','Finanzas'].includes(d)) return 'CX';
+  if (d === 'Comercial') return 'CX';
   return d;
 }
 
