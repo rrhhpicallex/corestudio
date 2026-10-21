@@ -2142,6 +2142,11 @@ a { color: inherit; text-decoration: none; }
 }
 .rep-tab:hover { color: var(--c-text); }
 .rep-tab.active { color: var(--c-accent-hover); border-bottom-color: var(--c-accent); font-weight: 700; }
+.equipo-dept-btn { font-size:12px; padding:4px 12px; border-radius:20px; cursor:pointer; background:var(--c-surface); border:1px solid var(--c-border); color:var(--c-text); transition:.15s; }
+.equipo-dept-btn:hover { border-color:var(--c-accent); }
+.equipo-dept-btn.active { background:var(--c-accent); color:#fff; border-color:var(--c-accent); }
+.equipo-emp-card { background:var(--c-surface); border:1px solid var(--c-border); border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:12px; transition:.15s; }
+.equipo-emp-card:hover { border-color:var(--c-accent); background:var(--c-surface-alt); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.08); }
 
 .rep-body { padding: 28px 32px; }
 .rep-panel { display: none !important; }
@@ -3643,6 +3648,10 @@ a { color: inherit; text-decoration: none; }
                   </div>
                 </div>
               </div>
+              <button class="btn-secondary" id="btn-ver-como" onclick="openVerComo(currentEmployee?.id)" title="Ver la perspectiva de este colaborador" style="font-size:12px;padding:7px 12px;display:flex;align-items:center;gap:6px;white-space:nowrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Ver como
+              </button>
               <div class="actions-dropdown" id="actions-dd">
                 <button class="btn-actions" onclick="toggleDropdown()">
                   Acciones
@@ -3883,7 +3892,7 @@ a { color: inherit; text-decoration: none; }
                 <thead>
                   <tr>
                     <th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th>
-                    <th>Estado</th><th>Revisado por</th><th>Log</th>
+                    <th>Estado</th><th>Revisado por</th><th>Nota</th><th>Log</th>
                   </tr>
                 </thead>
                 <tbody id="request-tbody"><!-- dynamic --></tbody>
@@ -4330,6 +4339,7 @@ a { color: inherit; text-decoration: none; }
       <div class="rep-tab" onclick="switchRepTab('evolucion', this)">📈 Evolución</div>
       <div class="rep-tab" onclick="switchRepTab('diversidad', this)">🌍 Diversidad</div>
       <div class="rep-tab" onclick="switchRepTab('bajas', this)">Bajas</div>
+      <div class="rep-tab" onclick="switchRepTab('equipo', this)">👥 Equipo</div>
     </div>
   </div>
   <div class="rep-body">
@@ -4517,6 +4527,12 @@ a { color: inherit; text-decoration: none; }
         </div>
       </div>
     </div>
+
+    <!-- EQUIPO -->
+    <div class="rep-panel" id="rp-equipo">
+      <div id="rep-equipo-content"></div>
+    </div>
+
   </div>
 </div>
     </div><!-- /content-area -->
@@ -4934,10 +4950,19 @@ function renderLeaveTiles(e) {
 function renderLeaveTable(e) {
   const tbody = document.getElementById('request-tbody');
   if (!e.leave_requests || e.leave_requests.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><h4>Sin historial de licencias</h4><p>Las solicitudes aprobadas o pendientes aparecerán aquí.</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><h4>Sin historial de licencias</h4><p>Las solicitudes aprobadas o pendientes aparecerán aquí.</p></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = e.leave_requests.map(r => `
+  tbody.innerHTML = e.leave_requests.map(r => {
+    const noteText = (r.note || '').replace(/^"+|"+$/g, '').trim();
+    const noteTrunc = noteText.length > 60 ? noteText.slice(0, 57) + '…' : noteText;
+    const noteCell = noteText
+      ? `<span title="${noteText.replace(/"/g, '&quot;').replace(/\n/g, ' ')}" style="cursor:default;font-size:11px;color:var(--c-text)">${noteTrunc}</span>`
+      : `<span style="color:var(--c-muted);font-size:11px">—</span>`;
+    const certCell = r.cert_url
+      ? `<a href="${r.cert_url}" target="_blank" title="Ver certificado" style="color:var(--c-accent);font-size:13px;text-decoration:none">📎</a>`
+      : '';
+    return `
     <tr>
       <td><span class="chip" style="font-size:11px">${r.type}</span></td>
       <td class="text-mono" style="font-size:12px">${fmtDateShort(r.from)}</td>
@@ -4945,12 +4970,13 @@ function renderLeaveTable(e) {
       <td><strong>${r.days}</strong></td>
       <td><span class="status-chip ${r.status}"><span class="status-dot"></span>${capitalize(r.status)}</span></td>
       <td style="font-size:12px">${r.reviewer}</td>
+      <td style="max-width:220px">${noteCell}${certCell ? ' ' + certCell : ''}</td>
       <td><div class="audit-trail">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         ${r.ts}
       </div></td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 /* Document list */
@@ -5287,8 +5313,8 @@ function openLeaveModal(type) {
       <input type="date" class="modal-input" id="modal-to" min="${new Date().toISOString().split('T')[0]}"/>
     </div>
     <div class="modal-field">
-      <div class="modal-label">Comentario (opcional)</div>
-      <textarea class="modal-input" id="modal-comment" rows="2" placeholder="Contexto adicional para el HR Lead..."></textarea>
+      <div class="modal-label">Comentario ${(type === 'Vacaciones' || type === 'Enfermedad') ? '<span style="color:var(--c-danger)">*</span>' : '(opcional)'}</div>
+      <textarea class="modal-input" id="modal-comment" rows="2" placeholder="${type === 'Vacaciones' ? 'Indicá las fechas y coordinación con tu líder...' : type === 'Enfermedad' ? 'Describí el motivo y la duración estimada...' : 'Contexto adicional para el HR Lead...'}"></textarea>
     </div>
     ${extra}
   `;
@@ -5322,6 +5348,11 @@ async function submitLeaveRequest() {
   const from = document.getElementById('modal-from')?.value;
 
   if (!from) { showToast('Seleccioná la fecha de inicio', 'error'); return; }
+  const commentVal = (document.getElementById('modal-comment')?.value || '').trim();
+  if ((currentLeaveType === 'Vacaciones' || currentLeaveType === 'Enfermedad') && !commentVal) {
+    showToast('El comentario es obligatorio para este tipo de licencia', 'error');
+    return;
+  }
   if (currentLeaveType === 'Enfermedad' && !window._certFile) {
     showToast('El certificado médico es obligatorio', 'error');
     return;
@@ -7056,6 +7087,92 @@ function renderRepTab(tab) {
   if (tab === 'evolucion')  renderEvolucion();
   if (tab === 'diversidad') renderDiversidad();
   if (tab === 'bajas')      renderBajasRep();
+  if (tab === 'equipo')     renderEquipoPanel();
+}
+
+function renderEquipoPanel() {
+  const container = document.getElementById('rep-equipo-content');
+  if (!container) return;
+  const emps = DB.employees.filter(e => e.status === 'active')
+    .sort((a,b) => (a.dept||'').localeCompare(b.dept||'') || a.name.localeCompare(b.name));
+  const depts = [...new Set(emps.map(e => normalizeDept(e.dept)||e.dept).filter(Boolean))].sort();
+  let html = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center">
+    <span style="font-size:12px;color:var(--c-muted)">Filtrar por área:</span>
+    <span class="equipo-dept-btn active" data-dept="" onclick="filterEquipoDept('',this)">Todos (${emps.length})</span>`;
+  depts.forEach(d => {
+    const count = emps.filter(e => (normalizeDept(e.dept)||e.dept) === d).length;
+    html += `<span class="equipo-dept-btn" data-dept="${d}" onclick="filterEquipoDept('${d}',this)">${d} (${count})</span>`;
+  });
+  html += `</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px" id="equipo-grid">`;
+  emps.forEach(e => {
+    const normDept = normalizeDept(e.dept)||e.dept;
+    html += `<div class="equipo-emp-card" data-dept="${normDept}" onclick="openProfile('${e.id}')" title="Abrir perfil de ${e.name}">
+      <div style="width:40px;height:40px;border-radius:50%;background:${e.color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${e.initials}</div>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name.split(' ').slice(0,2).join(' ')}</div>
+        <div style="font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.title||''}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--c-accent);margin-top:2px">${e.dept}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function filterEquipoDept(dept, btn) {
+  document.querySelectorAll('.equipo-dept-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('#equipo-grid .equipo-emp-card').forEach(card => {
+    card.style.display = (!dept || card.dataset.dept === dept) ? '' : 'none';
+  });
+}
+
+function openVerComo(empId) {
+  if (!empId) return;
+  const e = DB.employees.find(x => x.id === empId);
+  if (!e) return;
+  const modal = document.getElementById('vc-modal');
+  const av = document.getElementById('vc-avatar');
+  av.textContent = e.initials;
+  av.style.background = e.color;
+  document.getElementById('vc-name').textContent = e.name;
+  document.getElementById('vc-title').textContent = (e.title||'') + ' · ' + (e.dept||'');
+  // Render leave tiles into modal
+  const tilesEl = document.getElementById('vc-leave-tiles');
+  const savedTarget = document.getElementById('leave-tiles');
+  // Temporarily swap target, render, restore
+  savedTarget.id = '_lt_bak';
+  tilesEl.id = 'leave-tiles';
+  renderLeaveTiles(e);
+  tilesEl.id = 'vc-leave-tiles';
+  savedTarget.id = 'leave-tiles';
+  // Render requests table
+  const reqEl = document.getElementById('vc-requests');
+  if (!e.leave_requests || e.leave_requests.length === 0) {
+    reqEl.innerHTML = '<p style="color:var(--c-muted);font-size:13px">Sin historial de solicitudes.</p>';
+  } else {
+    reqEl.innerHTML = `<div style="overflow-x:auto"><table class="request-table" style="width:100%">
+      <thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th><th>Nota</th><th>Log</th></tr></thead>
+      <tbody>${e.leave_requests.map(r => {
+        const noteText = (r.note||'').replace(/^"+|"+$/g,'').trim();
+        const noteTrunc = noteText.length > 55 ? noteText.slice(0,52)+'…' : noteText;
+        return `<tr>
+          <td><span class="chip" style="font-size:11px">${r.type}</span></td>
+          <td style="font-size:12px">${fmtDateShort(r.from)}</td>
+          <td style="font-size:12px">${fmtDateShort(r.to)}</td>
+          <td><strong>${r.days}</strong></td>
+          <td><span class="status-chip ${r.status}"><span class="status-dot"></span>${capitalize(r.status)}</span></td>
+          <td style="font-size:11px;max-width:180px">${noteTrunc ? `<span title="${noteText.replace(/"/g,'&quot;').replace(/\n/g,' ')}">${noteTrunc}</span>` : '<span style="color:var(--c-muted)">—</span>'}${r.cert_url ? ` <a href="${r.cert_url}" target="_blank" style="color:var(--c-accent)">📎</a>` : ''}</td>
+          <td style="font-size:11px;color:var(--c-muted)">${r.ts||''}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+  modal.style.display = 'flex';
+}
+
+function closeVerComo() {
+  document.getElementById('vc-modal').style.display = 'none';
 }
 
 /* ── helpers ── */
@@ -9296,6 +9413,27 @@ function renderPolicyTable() {
 })();
 </script>
 <!-- ─── LEAVE DETAIL PANEL ─────────────────────────── -->
+<!-- ─── VER COMO modal ─── -->
+<div id="vc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center" onclick="if(event.target===this)closeVerComo()">
+  <div style="background:var(--c-surface);border-radius:14px;width:min(720px,96vw);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;gap:14px;padding:20px 24px 16px;border-bottom:1px solid var(--c-border);position:sticky;top:0;background:var(--c-surface);z-index:1">
+      <div id="vc-avatar" class="profile-avatar" style="width:42px;height:42px;font-size:15px;flex-shrink:0">AB</div>
+      <div>
+        <div style="font-size:16px;font-weight:700" id="vc-name">Nombre</div>
+        <div style="font-size:12px;color:var(--c-muted)" id="vc-title">Título · Área</div>
+      </div>
+      <div style="margin-left:auto;font-size:11px;color:var(--c-muted);font-style:italic">Vista del colaborador</div>
+      <button onclick="closeVerComo()" style="background:none;border:none;cursor:pointer;color:var(--c-muted);font-size:22px;line-height:1;padding:0 4px">×</button>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted);margin-bottom:12px">Saldos de licencias</div>
+      <div class="leave-tiles" id="vc-leave-tiles"></div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted);margin:20px 0 12px">Historial de solicitudes</div>
+      <div id="vc-requests"></div>
+    </div>
+  </div>
+</div>
+
 <div class="leave-detail-overlay" id="ldp-overlay">
   <div class="leave-detail-backdrop" onclick="closeLDP()"></div>
   <div class="leave-detail-panel" id="ldp-panel">
