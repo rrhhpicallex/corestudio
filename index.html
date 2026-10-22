@@ -4944,10 +4944,22 @@ function calcVacBalance(emp, year) {
     total = lctDays(seniority);
   }
 
-  const curReqs   = vacReqs(year);
-  const used      = curReqs.filter(r => r.status === 'aprobado').reduce((s, r) => s + countDays(r), 0);
-  const pending   = curReqs.filter(r => r.status === 'pendiente').reduce((s, r) => s + countDays(r), 0);
-  const available = total - used - pending;
+  // Process requests chronologically: if a request exceeds remaining balance it's
+  // treated as "advance" against next year (por adelantado) and not charged here.
+  const curReqs = vacReqs(year).sort((a, b) => new Date(a.from) - new Date(b.from));
+  let remaining = total;
+  let used = 0;
+  let pending = 0;
+  for (const r of curReqs) {
+    const d = countDays(r);
+    if (r.status === 'aprobado') {
+      if (d <= remaining) { used += d; remaining -= d; }
+      // else: advance against next year, skip
+    } else if (r.status === 'pendiente') {
+      if (d <= remaining) { pending += d; remaining -= d; }
+    }
+  }
+  const available = remaining;
 
   // ── Prior year (to show if unused balance remains) ────────
   let priorYear = null;
@@ -4967,10 +4979,17 @@ function calcVacBalance(emp, year) {
     } else {
       pTotal = lctDays(pSenior);
     }
-    const pReqs    = vacReqs(prevY);
-    const pUsed    = pReqs.filter(r => r.status === 'aprobado').reduce((s, r) => s + countDays(r), 0);
-    const pPending = pReqs.filter(r => r.status === 'pendiente').reduce((s, r) => s + countDays(r), 0);
-    const pAvail   = pTotal - pUsed - pPending;
+    const pReqs   = vacReqs(prevY).sort((a, b) => new Date(a.from) - new Date(b.from));
+    let pRemain = pTotal, pUsed = 0, pPending = 0;
+    for (const r of pReqs) {
+      const d = countDays(r);
+      if (r.status === 'aprobado') {
+        if (d <= pRemain) { pUsed += d; pRemain -= d; }
+      } else if (r.status === 'pendiente') {
+        if (d <= pRemain) { pPending += d; pRemain -= d; }
+      }
+    }
+    const pAvail = pRemain;
     if (pAvail > 0) priorYear = { year: prevY, total: pTotal, used: pUsed, available: pAvail };
   }
 
