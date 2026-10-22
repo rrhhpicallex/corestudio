@@ -855,10 +855,8 @@ a { color: inherit; text-decoration: none; }
   position: absolute; top: 5px; left: 2px; right: 2px; bottom: 5px;
   border-radius: 4px; z-index: 2;
   box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-  display: flex; align-items: center; justify-content: flex-start;
-  padding-left: 4px;
-  font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.95);
-  overflow: hidden; white-space: nowrap; letter-spacing: .3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; overflow: hidden;
 }
 .gantt-event.vac  { background: linear-gradient(135deg, #1565c0, #42a5f5); }
 .gantt-event.sick { background: linear-gradient(135deg, #c62828, #ef5350); }
@@ -5922,11 +5920,9 @@ function renderGantt() {
           label: label, req_id: ev.req_id || ''
         }));
         const stdTypes = ['vac','sick','extra','mat','bday'];
-        const bgInline = stdTypes.includes(ev.type) ? '' : `background:${leaveStyle.bg};color:${leaveStyle.text};`;
-        const ABBR = { vac:'VAC', sick:'ENF', extra:'EX', mat:'MAT', bday:'BD', Mudanza:'MUD', 'Final Days':'FD', 'Licencia Especial':'LIC', 'Chequeate/Tramitate':'CHQ' };
-        const abbr = isFirst ? (ABBR[ev.type] || ev.type.slice(0,3).toUpperCase()) : '';
-        const abbrColor = ev.type === 'bday' ? 'color:rgba(0,0,0,0.7);' : '';
-        gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="${bgInline}${abbrColor}" onclick="openLDP(decodeURIComponent('${evDataStr}'))">${abbr}</div>`;
+        const bgInline = stdTypes.includes(ev.type) ? '' : `background:${leaveStyle.bg};`;
+        const emojiLabel = isFirst ? (leaveStyle.emoji || icon) : '';
+        gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="${bgInline}" onclick="openLDP(decodeURIComponent('${evDataStr}'))">${emojiLabel}</div>`;
       }
       gridHtml += `</div>`;
     }
@@ -6144,10 +6140,11 @@ async function ldpReject(e) {
 function renderMiniCal(fromStr, toStr, bgColor, textColor, returnDate) {
   const from = new Date(fromStr);
   const to   = new Date(toStr);
-  // If the leave spans multiple months, show from-month; render extra month if needed
-  renderMiniCalFromDay(from.getDate(), to.getDate(), from.getMonth(), from.getFullYear(), bgColor, textColor, returnDate);
-  // If end month is different, also render it
-  if (to.getMonth() !== from.getMonth() || to.getFullYear() !== from.getFullYear()) {
+  const crossMonth = to.getMonth() !== from.getMonth() || to.getFullYear() !== from.getFullYear();
+  // When cross-month, first month highlights from start to last day of that month
+  const firstMonthToDay = crossMonth ? daysInMonth(from.getMonth(), from.getFullYear()) : to.getDate();
+  renderMiniCalFromDay(from.getDate(), firstMonthToDay, from.getMonth(), from.getFullYear(), bgColor, textColor, returnDate);
+  if (crossMonth) {
     renderMiniCalSecondMonth(from, to, bgColor, textColor, returnDate);
   }
 }
