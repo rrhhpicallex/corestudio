@@ -4905,6 +4905,78 @@ function renderReports(e) {
   }).join('');
 }
 
+// ── VACATION BALANCE (LCT Argentina + Picallex policy) ───────
+function calcVacBalance(emp, year) {
+  year = year || new Date().getFullYear();
+  const hire     = new Date(emp.hire_date);
+  const hireYear = hire.getFullYear();
+  const dec31    = new Date(year, 11, 31);
+  const MS_YEAR  = 365.25 * 24 * 3600 * 1000;
+
+  function lctDays(seniorityYrs) {
+    if (seniorityYrs < 5)  return 14;
+    if (seniorityYrs < 10) return 21;
+    if (seniorityYrs < 20) return 28;
+    return 35;
+  }
+  function vacReqs(y) {
+    return (emp.leave_requests || []).filter(r =>
+      r.type === 'Vacaciones' && new Date(r.from).getFullYear() === y
+    );
+  }
+  function countDays(r) {
+    return r.days || (Math.round((new Date(r.to) - new Date(r.from)) / 86400000) + 1);
+  }
+
+  // ── Current year ──────────────────────────────────────────
+  const seniority = Math.max(0, Math.floor((dec31 - hire) / MS_YEAR));
+  let total;
+  if (hireYear === year) {
+    // First year: July 3 cutoff (LCT: worked ≥ half the year → full 14d)
+    const july3 = new Date(year, 6, 3);
+    if (hire < july3) {
+      total = 14;
+    } else {
+      const daysWorked = Math.floor((dec31 - hire) / 86400000) + 1;
+      total = Math.max(0, Math.floor(daysWorked / 20));
+    }
+  } else {
+    total = lctDays(seniority);
+  }
+
+  const curReqs   = vacReqs(year);
+  const used      = curReqs.filter(r => r.status === 'aprobado').reduce((s, r) => s + countDays(r), 0);
+  const pending   = curReqs.filter(r => r.status === 'pendiente').reduce((s, r) => s + countDays(r), 0);
+  const available = total - used - pending;
+
+  // ── Prior year (to show if unused balance remains) ────────
+  let priorYear = null;
+  const prevY   = year - 1;
+  if (hireYear <= prevY) {
+    const pDec31    = new Date(prevY, 11, 31);
+    const pSenior   = Math.max(0, Math.floor((pDec31 - hire) / MS_YEAR));
+    let pTotal;
+    if (hireYear === prevY) {
+      const pJuly3 = new Date(prevY, 6, 3);
+      if (hire < pJuly3) {
+        pTotal = 14;
+      } else {
+        const pWorked = Math.floor((pDec31 - hire) / 86400000) + 1;
+        pTotal = Math.max(0, Math.floor(pWorked / 20));
+      }
+    } else {
+      pTotal = lctDays(pSenior);
+    }
+    const pReqs    = vacReqs(prevY);
+    const pUsed    = pReqs.filter(r => r.status === 'aprobado').reduce((s, r) => s + countDays(r), 0);
+    const pPending = pReqs.filter(r => r.status === 'pendiente').reduce((s, r) => s + countDays(r), 0);
+    const pAvail   = pTotal - pUsed - pPending;
+    if (pAvail > 0) priorYear = { year: prevY, total: pTotal, used: pUsed, available: pAvail };
+  }
+
+  return { total, used, pending, available, seniority, priorYear };
+}
+
 /* Leave tiles */
 function renderLeaveTiles(e) {
   const b = e.leave_balances || {};
@@ -4914,8 +4986,17 @@ function renderLeaveTiles(e) {
     { key: 'extra_day', label: 'Extra Day', icon: '⭐', color: '#f57f17', bg: '#fff8e1' },
     { key: 'maternidad', label: 'Mat./Paternal', icon: '👶', color: '#880e4f', bg: '#fce4ec' }
   ];
+  // Compute vacation balance dynamically for Argentina employees
+  const vacBal = (e.country === 'Argentina' || !e.country) ? calcVacBalance(e) : null;
+
   document.getElementById('leave-tiles').innerHTML = tiles.map(t => {
-    const data = b[t.key] || { total: 0, used: 0, pending: 0, available: 0 };
+    // For vacaciones with Argentina employees, use computed balance
+    let data;
+    if (t.key === 'vacaciones' && vacBal) {
+      data = { total: vacBal.total, used: vacBal.used, pending: vacBal.pending, available: vacBal.available };
+    } else {
+      data = b[t.key] || { total: 0, used: 0, pending: 0, available: 0 };
+    }
 
     // Use pre-calculated `available` field if present, else calculate
     let avail = data.available !== undefined
@@ -4926,15 +5007,14 @@ function renderLeaveTiles(e) {
     const isUnlimited = t.key === 'enfermedad';
     if (isUnlimited) avail = null;
 
-    // no_balance: datos no confiables, mostrar "-"
-    const noBalance = t.key === 'vacaciones' && data.no_balance;
+    const noBalance = false;
 
-    // For vacaciones, show days/year as subtitle context
-    const vacContext = (t.key === 'vacaciones' && data.days_per_year)
-      ? `${data.days_per_year}d/año · ${data.years_worked} año${data.years_worked !== 1 ? 's' : ''}`
+    // For vacaciones, show seniority context
+    const vacContext = (t.key === 'vacaciones' && vacBal)
+      ? `${vacBal.total}d/año · ${vacBal.seniority} año${vacBal.seniority !== 1 ? 's' : ''} antigüedad`
       : null;
 
-    // Bar: for extra_day, max is 5 per year; for vac, max is acumulado historico
+    // Bar: for extra_day, max is 5 per year; for vac, max is total
     const barMax = t.key === 'extra_day' ? 5 : (data.total || 1);
     const pct = barMax > 0 ? Math.min(100, Math.round((data.used / barMax) * 100)) : 0;
     const availColor = avail !== null && avail < 0 ? '#e53935' : t.color;
@@ -4946,7 +5026,10 @@ function renderLeaveTiles(e) {
     } else if (t.key === 'vacaciones' && avail < 0) {
       availTip = '⚠️ Saldo negativo: tomó más días de los que le corresponden en el período.\nLa política PicallEx permite adelantar vacaciones.\nEl saldo pendiente (${Math.abs(avail)}d) se descontará del siguiente período.'.replace('${Math.abs(avail)}d', Math.abs(avail) + 'd');
     } else if (t.key === 'vacaciones') {
-      availTip = `${avail} días disponibles de ${data.total} totales.\n${data.used} ya utilizados · ${data.pending} pendiente de aprobación.\nHacé clic para solicitar vacaciones.`;
+      let tip = `${avail} días disponibles de ${data.total} totales ${new Date().getFullYear()}.\n${data.used} ya utilizados · ${data.pending} en revisión.`;
+      if (vacBal?.priorYear) tip += `\n⚠️ Quedan ${vacBal.priorYear.available}d del ${vacBal.priorYear.year} sin tomar.`;
+      tip += '\nHacé clic para solicitar vacaciones.';
+      availTip = tip;
     } else if (t.key === 'extra_day') {
       availTip = `Extra Day: beneficio especial no acumulable.\n${avail} disponible${avail !== 1 ? 's' : ''} de ${data.total} asignados este año.\nHacé clic para solicitarlo.`;
     } else if (t.key === 'maternidad') {
@@ -4961,7 +5044,8 @@ function renderLeaveTiles(e) {
         </div>
         <div class="lt-big" style="color:${noBalance ? 'var(--c-muted)' : availColor}" data-tip="${noBalance ? 'Sin datos de saldo disponibles.' : availTip.replace(/"/g, '&quot;')}">${noBalance ? '—' : isUnlimited ? '∞' : avail}</div>
         <div class="lt-sub">${noBalance ? 'sin datos' : isUnlimited ? 'días sin límite' : (avail < 0 ? '⚠️ saldo negativo' : 'días disponibles')}</div>
-        ${vacContext && !noBalance ? `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacContext}</div>` : ''}
+        ${vacContext ? `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacContext}</div>` : ''}
+        ${t.key === 'vacaciones' && vacBal?.priorYear ? `<div style="font-size:10px;color:#e65100;margin-bottom:4px">⚠️ ${vacBal.priorYear.available}d del ${vacBal.priorYear.year} sin tomar</div>` : ''}
         <div class="lt-bar"><div class="lt-bar-fill" style="width:${noBalance ? 0 : pct}%;background:${t.color}"></div></div>
         <div class="lt-legend">
           <div class="lt-legend-item" data-tip="Días ya aprobados y gozados."><div class="lt-dot" style="background:${t.color}"></div>${data.used} usados</div>
@@ -5273,19 +5357,22 @@ function openLeaveModal(type) {
 
   const keyMap = { 'Vacaciones': 'vacaciones', 'Enfermedad': 'enfermedad', 'Extra Day': 'extra_day', 'Maternidad/Paternidad': 'maternidad' };
   const key = keyMap[type] || 'vacaciones';
-  const bal = b?.[key] || { total: 0, used: 0, pending: 0 };
 
-  // Use pre-computed `available` field (cumulative) if present — same as tile
-  // If not, fall back to total - used - pending (for employees without leave_balances)
-  const noBalance = key === 'vacaciones' && bal.no_balance;
-  const avail = bal.available !== undefined
-    ? (bal.available - (bal.pending || 0))
-    : (bal.total - bal.used - (bal.pending || 0));
-
-  // "Acumulados" = available + used (makes the math visible: 105 - 37 = 68)
-  const acumulados = bal.available !== undefined
-    ? bal.available + bal.used
-    : bal.total;
+  // For vacaciones in Argentina, use dynamic calculation
+  let bal, avail, acumulados, _vacBal = null;
+  if (key === 'vacaciones' && (emp.country === 'Argentina' || !emp.country)) {
+    _vacBal    = calcVacBalance(emp);
+    bal        = { total: _vacBal.total, used: _vacBal.used, pending: _vacBal.pending };
+    avail      = _vacBal.available;
+    acumulados = _vacBal.total;
+  } else {
+    bal        = b?.[key] || { total: 0, used: 0, pending: 0 };
+    avail      = bal.available !== undefined
+                 ? (bal.available - (bal.pending || 0))
+                 : (bal.total - bal.used - (bal.pending || 0));
+    acumulados = bal.available !== undefined ? bal.available + bal.used : bal.total;
+  }
+  const noBalance = false;
 
   document.getElementById('modal-title').textContent = `Solicitar ${type}`;
   document.getElementById('modal-subtitle').textContent = `Colaborador: ${emp.name}`;
@@ -5320,16 +5407,25 @@ function openLeaveModal(type) {
   if (type === 'Vacaciones' && avail < 0) {
     extra = `<div class="modal-warning">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Saldo negativo permitido según configuración HR. Se requiere aprobación manual del HR Lead.
+      Sin saldo disponible — la solicitud queda a criterio del HR Lead para aprobar.
     </div>`;
   }
 
+  // Prior year pending balance notice
+  const priorYearExtra = (_vacBal?.priorYear)
+    ? `<div class="modal-warning" style="background:#fff3e0;border-color:#e65100;color:#bf360c">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Tiene <strong>${_vacBal.priorYear.available} días</strong> del ${_vacBal.priorYear.year} sin tomar. Recordale que los use antes de superponer con los de ${new Date().getFullYear()}.
+      </div>`
+    : '';
+
   document.getElementById('modal-body').innerHTML = `
     <div class="modal-balance">
-      <div class="mb-item"><div class="mb-num">${noBalance ? '—' : acumulados}</div><div class="mb-label">Acumulados</div></div>
+      <div class="mb-item"><div class="mb-num">${acumulados}</div><div class="mb-label">Total ${new Date().getFullYear()}</div></div>
       <div class="mb-item"><div class="mb-num">${bal.used}</div><div class="mb-label">Tomados</div></div>
-      <div class="mb-item"><div class="mb-num" style="color:${noBalance ? 'var(--c-muted)' : avail < 3 ? 'var(--c-danger)' : 'var(--c-accent)'}">${noBalance ? '—' : avail}</div><div class="mb-label">Disponibles</div></div>
+      <div class="mb-item"><div class="mb-num" style="color:${avail < 1 ? 'var(--c-danger)' : avail < 5 ? '#e65100' : 'var(--c-accent)'}">${avail}</div><div class="mb-label">Disponibles</div></div>
     </div>
+    ${priorYearExtra}
     <div class="modal-field">
       <div class="modal-label">Fecha de inicio</div>
       <input type="date" class="modal-input" id="modal-from" min="${new Date().toISOString().split('T')[0]}"/>
