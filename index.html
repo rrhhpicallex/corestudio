@@ -5552,6 +5552,17 @@ async function submitLeaveRequest() {
   closeModalDirect();
   showToast(`Solicitud de ${currentLeaveType} enviada correctamente`, 'success');
 
+  // Notificar a HR por Slack
+  const hrAdmins = Object.entries(AUTH_EMAILS)
+    .filter(([, v]) => v.role === 'admin')
+    .map(([email]) => email);
+  const fmtDate = d => d ? d.split('-').reverse().join('/') : '';
+  hrAdmins.forEach(email => notifySlack({
+    type: 'leave_submitted', recipientEmail: email,
+    empName: emp.name, leaveType: currentLeaveType,
+    fromDate: fmtDate(from), toDate: fmtDate(to), days,
+  }));
+
   // refresh if on licencias tab
   if (currentTab === 'licencias' && currentEmployee) {
     renderLeaveTiles(currentEmployee);
@@ -5863,6 +5874,11 @@ async function approveRequest(empId, reqId, e) {
     await window.supabase.from('leave_requests').update({ status: 'aprobado', reviewer: req.reviewer }).eq('id', reqId);
   }
   showToast(`Licencia de ${emp.name} aprobada`, 'success');
+  const _fmtA = d => d ? d.split('-').reverse().join('/') : '';
+  notifySlack({ type: 'leave_reviewed', recipientEmail: emp.email,
+    empName: emp.name, leaveType: req.type,
+    fromDate: _fmtA(req.from), toDate: _fmtA(req.to),
+    status: 'aprobado', reviewerName: getCurrentUserName() });
   renderSolicitudes();
   renderFeedSolicitudes();
 }
@@ -5880,6 +5896,11 @@ async function rejectRequest(empId, reqId, e) {
     await window.supabase.from('leave_requests').update({ status: 'rechazado', reviewer: req.reviewer }).eq('id', reqId);
   }
   showToast('Solicitud rechazada', 'error');
+  const _fmtR = d => d ? d.split('-').reverse().join('/') : '';
+  notifySlack({ type: 'leave_reviewed', recipientEmail: emp.email,
+    empName: emp.name, leaveType: req.type,
+    fromDate: _fmtR(req.from), toDate: _fmtR(req.to),
+    status: 'rechazado', reviewerName: getCurrentUserName() });
   renderSolicitudes();
   renderFeedSolicitudes();
 }
@@ -7382,6 +7403,19 @@ function closeVerComo() {
   document.getElementById('vc-modal').style.display = 'none';
 }
 
+// ── Slack Notifications ──────────────────────────────
+async function notifySlack(payload) {
+  try {
+    await fetch('/.netlify/functions/slack-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.warn('Slack notify failed:', err);
+  }
+}
+
 /* ── helpers ── */
 function calcAge(hireDate) {
   const h = new Date(hireDate), n = new Date();
@@ -8274,6 +8308,16 @@ function publishNov() {
   closeNovModal();
   renderNovFeed();
   showToast(isScheduled && scheduleDt ? 'Anuncio programado correctamente' : 'Anuncio publicado', 'success');
+
+  // Notificar a todos los colaboradores activos por Slack (solo posts no programados)
+  if (!newPost.scheduled && ['institucional', 'reconocimiento'].includes(novSelectedCat)) {
+    const authorEmp = currentUser?.emp;
+    DB.employees.filter(e => e.status === 'active' && e.email && e.id !== authorEmp?.id)
+      .forEach(e => notifySlack({
+        type: 'new_post', recipientEmail: e.email,
+        postTitle: title, postAuthor: authorEmp?.name || 'RRHH',
+      }));
+  }
 }
 
 /* ── SIDEBAR ── */
