@@ -4989,7 +4989,9 @@ function calcVacBalance(emp, year) {
         if (d <= pRemain) { pPending += d; pRemain -= d; }
       }
     }
-    const pAvail = pRemain;
+    // Carryover days are consumed first by current-year usage
+    const pAvailRaw = pRemain;
+    const pAvail    = Math.max(0, pAvailRaw - used - pending);
     if (pAvail > 0) priorYear = { year: prevY, total: pTotal, used: pUsed, available: pAvail };
   }
 
