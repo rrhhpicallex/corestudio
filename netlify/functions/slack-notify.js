@@ -56,8 +56,12 @@ function buildBlocks(event) {
       },
       { type: 'divider' },
       {
-        type: 'context',
-        elements: [{ type: 'mrkdwn', text: '_Revisá la solicitud en Core Studio_' }],
+        type: 'actions',
+        elements: [{
+          type: 'button', text: { type: 'plain_text', text: '🔗 Ir a Core Studio' },
+          url: 'https://core-studiohr.netlify.app',
+          action_id: 'open_corestudio',
+        }],
       },
     ];
   }
@@ -80,6 +84,14 @@ function buildBlocks(event) {
           { type: 'mrkdwn', text: `*Revisado por:*\n${reviewerName}` },
         ],
       },
+      {
+        type: 'actions',
+        elements: [{
+          type: 'button', text: { type: 'plain_text', text: '🔗 Ir a Core Studio' },
+          url: 'https://core-studiohr.netlify.app',
+          action_id: 'open_corestudio_review',
+        }],
+      },
     ];
   }
 
@@ -93,8 +105,12 @@ function buildBlocks(event) {
         },
       },
       {
-        type: 'context',
-        elements: [{ type: 'mrkdwn', text: '_Entrá a Core Studio para verlo completo_' }],
+        type: 'actions',
+        elements: [{
+          type: 'button', text: { type: 'plain_text', text: '🔗 Ir a Core Studio' },
+          url: 'https://core-studiohr.netlify.app',
+          action_id: 'open_corestudio_post',
+        }],
       },
     ];
   }
