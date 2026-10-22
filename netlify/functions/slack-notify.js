@@ -16,8 +16,15 @@ async function slackPost(method, body, token) {
 }
 
 async function getUserId(email, token) {
-  const data = await slackPost('users.lookupByEmail', { email }, token);
-  if (!data.ok) return null;
+  const url = `${SLACK_API}/users.lookupByEmail?email=${encodeURIComponent(email)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    console.warn('users.lookupByEmail error:', data.error, 'for', email);
+    return null;
+  }
   return data.user?.id || null;
 }
 
