@@ -1247,15 +1247,22 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow-sm);
 }
 .gantt-event:hover .event-tooltip { opacity: 1; }
-.gantt-event.extra  { background: linear-gradient(135deg, #e65100, #ff9800); }
-.gantt-event.mat    { background: linear-gradient(135deg, #880e4f, #e91e63); }
+.gantt-event.extra        { background: linear-gradient(135deg, #e65100, #ff9800); }
+.gantt-event.mat          { background: linear-gradient(135deg, #880e4f, #e91e63); }
+.gantt-event.fall         { background: linear-gradient(135deg, #37474f, #78909c); }
+.gantt-event.chequeate    { background: linear-gradient(135deg, #00695c, #26a69a); }
+.gantt-event.mudanza-ev   { background: linear-gradient(135deg, #bf360c, #ff8a65); }
+.gantt-event.cumple       { background: linear-gradient(135deg, #6a1b9a, #ab47bc); }
 
 /* ─── GANTT LEGEND UPDATE ────────────────────────────────── */
-.gantt-legend-dot.vac  { background: #1565c0; }
-.gantt-legend-dot.sick { background: #c62828; }
-.gantt-legend-dot.bday { background: #f9a825; }
-.gantt-legend-dot.extra { background: #e65100; }
-.gantt-legend-dot.mat  { background: #880e4f; }
+.gantt-legend-dot.vac        { background: #1565c0; }
+.gantt-legend-dot.sick       { background: #c62828; }
+.gantt-legend-dot.bday       { background: #f9a825; }
+.gantt-legend-dot.extra      { background: #e65100; }
+.gantt-legend-dot.mat        { background: #880e4f; }
+.gantt-legend-dot.fall       { background: #546e7a; }
+.gantt-legend-dot.chequeate  { background: #00695c; }
+.gantt-legend-dot.mudanza-ev { background: #bf360c; }
 
 
 /* ─── LEAVE DETAIL PANEL (slide-in from right) ──────── */
@@ -1405,8 +1412,10 @@ a { color: inherit; text-decoration: none; }
 .type-chip.tc-extra.active  { background: #6a1b9a; }
 .type-chip.tc-mat.active    { background: #ad1457; }
 .type-chip.tc-bday.active     { background: #e65100; }
-.type-chip.tc-mudanza.active  { background: #bf360c; }
-.type-chip.tc-final.active    { background: #1a237e; }
+.type-chip.tc-mudanza.active    { background: #bf360c; }
+.type-chip.tc-final.active      { background: #1a237e; }
+.type-chip.tc-fall.active       { background: #37474f; }
+.type-chip.tc-chequeate.active  { background: #00695c; }
 
 
 /* ─── DIRECTORY TABS (Directorio / Organigrama) ─── */
@@ -3977,7 +3986,9 @@ a { color: inherit; text-decoration: none; }
           <button class="type-chip tc-extra" data-type="extra" data-tip="Extra Day: beneficio PicallEx de un día libre extra por año.\nNo acumulable. Se pierde si no se usa." onclick="setCalTypeFilter('extra',this)">🏖️ Extra Day</button>
           <button class="type-chip tc-mat" data-type="mat" data-tip="Licencia de maternidad o paternidad.\nSe configura según ley vigente en cada país." onclick="setCalTypeFilter('mat',this)">👶 Mat./Pat.</button>
           <button class="type-chip tc-bday" data-type="bday" data-tip="Día libre en el cumpleaños del colaborador.\nBeneficio PicallEx: tomalo el día o la semana de tu cumpleaños." onclick="setCalTypeFilter('bday',this)">🎂 Cumpleaños</button>
-          <button class="type-chip tc-mudanza" data-type="Mudanza" data-tip="Licencia por mudanza." onclick="setCalTypeFilter('Mudanza',this)">📦 Mudanza</button>
+          <button class="type-chip tc-mudanza" data-type="Mudanza" data-tip="Licencia por mudanza. Hasta 2 días." onclick="setCalTypeFilter('Mudanza',this)">📦 Mudanza</button>
+          <button class="type-chip tc-fall" data-type="Fallecimiento" data-tip="Licencia por fallecimiento. 3 días por familiar directo (LCT)." onclick="setCalTypeFilter('Fallecimiento',this)">🕊️ Fallecimiento</button>
+          <button class="type-chip tc-chequeate" data-type="Chequeate/Tramitate" data-tip="4 horas para trámites o controles médicos." onclick="setCalTypeFilter('Chequeate/Tramitate',this)">🏥 Chequeate</button>
           <button class="type-chip tc-final" data-type="Final Days" data-tip="Período de finalización laboral." onclick="setCalTypeFilter('Final Days',this)">📚 Final Days</button>
         </div>
         <div class="card" style="overflow-x:auto; padding:20px">
@@ -3989,7 +4000,9 @@ a { color: inherit; text-decoration: none; }
           <div class="gantt-legend-item"><div class="gantt-legend-dot extra"></div>🏖️ Extra Day</div>
           <div class="gantt-legend-item"><div class="gantt-legend-dot mat"></div>👶 Mat./Pat.</div>
           <div class="gantt-legend-item"><div class="gantt-legend-dot bday"></div>🎂 Cumpleaños</div>
-          <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#ffe0b2;border:1px solid #bf360c"></div>📦 Mudanza</div>
+          <div class="gantt-legend-item"><div class="gantt-legend-dot mudanza-ev"></div>📦 Mudanza</div>
+          <div class="gantt-legend-item"><div class="gantt-legend-dot fall"></div>🕊️ Fallecimiento</div>
+          <div class="gantt-legend-item"><div class="gantt-legend-dot chequeate"></div>🏥 Chequeate</div>
           <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#c5cae9;border:1px solid #1a237e"></div>📚 Final Days</div>
         </div>
       </div>
@@ -4919,20 +4932,11 @@ function calcVacBalance(emp, year) {
     if (seniorityYrs < 20) return 28;
     return 35;
   }
-  function vacReqs(y) {
-    return (emp.leave_requests || []).filter(r =>
-      r.type === 'Vacaciones' && new Date(r.from).getFullYear() === y
-    );
-  }
-  function countDays(r) {
-    return r.days || (Math.round((new Date(r.to) - new Date(r.from)) / 86400000) + 1);
-  }
 
-  // ── Current year ──────────────────────────────────────────
+  // LCT entitlement for the year (seniority at Dec 31)
   const seniority = Math.max(0, Math.floor((dec31 - hire) / MS_YEAR));
   let total;
   if (hireYear === year) {
-    // First year: July 3 cutoff (LCT: worked ≥ half the year → full 14d)
     const july3 = new Date(year, 6, 3);
     if (hire < july3) {
       total = 14;
@@ -4944,133 +4948,133 @@ function calcVacBalance(emp, year) {
     total = lctDays(seniority);
   }
 
-  // Process requests chronologically: if a request exceeds remaining balance it's
-  // treated as "advance" against next year (por adelantado) and not charged here.
-  const curReqs = vacReqs(year).sort((a, b) => new Date(a.from) - new Date(b.from));
-  let remaining = total;
-  let used = 0;
-  let pending = 0;
-  for (const r of curReqs) {
-    const d = countDays(r);
-    if (r.status === 'aprobado') {
-      if (d <= remaining) { used += d; remaining -= d; }
-      // else: advance against next year, skip
-    } else if (r.status === 'pendiente') {
-      if (d <= remaining) { pending += d; remaining -= d; }
-    }
-  }
-  const available = remaining;
+  // Use leave_balances as source of truth for used/available (HR-maintained)
+  const lb  = emp.leave_balances?.vacaciones || {};
+  const used      = lb.used     || 0;
+  const pending   = lb.pending  || 0;
+  const available = lb.available !== undefined ? lb.available : (total - used - pending);
 
-  // ── Prior year (to show if unused balance remains) ────────
-  let priorYear = null;
-  const prevY   = year - 1;
-  if (hireYear <= prevY) {
-    const pDec31    = new Date(prevY, 11, 31);
-    const pSenior   = Math.max(0, Math.floor((pDec31 - hire) / MS_YEAR));
-    let pTotal;
-    if (hireYear === prevY) {
-      const pJuly3 = new Date(prevY, 6, 3);
-      if (hire < pJuly3) {
-        pTotal = 14;
-      } else {
-        const pWorked = Math.floor((pDec31 - hire) / 86400000) + 1;
-        pTotal = Math.max(0, Math.floor(pWorked / 20));
-      }
-    } else {
-      pTotal = lctDays(pSenior);
-    }
-    const pReqs   = vacReqs(prevY).sort((a, b) => new Date(a.from) - new Date(b.from));
-    let pRemain = pTotal, pUsed = 0, pPending = 0;
-    for (const r of pReqs) {
-      const d = countDays(r);
-      if (r.status === 'aprobado') {
-        if (d <= pRemain) { pUsed += d; pRemain -= d; }
-      } else if (r.status === 'pendiente') {
-        if (d <= pRemain) { pPending += d; pRemain -= d; }
-      }
-    }
-    // Carryover days are consumed first by current-year usage
-    const pAvailRaw = pRemain;
-    const pAvail    = Math.max(0, pAvailRaw - used - pending);
-    if (pAvail > 0) priorYear = { year: prevY, total: pTotal, used: pUsed, available: pAvail };
-  }
-
-  return { total, used, pending, available, seniority, priorYear };
+  return { total, used, pending, available, seniority };
 }
 
 /* Leave tiles */
 function renderLeaveTiles(e) {
-  const b = e.leave_balances || {};
-  const tiles = [
-    { key: 'vacaciones', label: 'Vacaciones', icon: '🏖️', color: '#1565c0', bg: '#e3f2fd' },
-    { key: 'enfermedad', label: 'Enfermedad', icon: '🤒', color: '#c62828', bg: '#fce4ec' },
-    { key: 'extra_day', label: 'Extra Day', icon: '⭐', color: '#f57f17', bg: '#fff8e1' },
-    { key: 'maternidad', label: 'Mat./Paternal', icon: '👶', color: '#880e4f', bg: '#fce4ec' }
-  ];
-  // Compute vacation balance dynamically for Argentina employees
+  const b   = e.leave_balances || {};
+  const y   = new Date().getFullYear();
+  const reqs = e.leave_requests || [];
+
+  // Helper: count days from leave_requests by type, year, status
+  function reqCount(types, status) {
+    const typeArr = Array.isArray(types) ? types : [types];
+    return reqs.filter(r =>
+      typeArr.includes(r.type) &&
+      new Date(r.from).getFullYear() === y &&
+      r.status === status
+    ).reduce((s, r) => s + (r.days || 1), 0);
+  }
+
+  // Vacation balance (LCT-computed total, leave_balances for used/available)
   const vacBal = (e.country === 'Argentina' || !e.country) ? calcVacBalance(e) : null;
 
+  const tiles = [
+    { key: 'vacaciones',    label: 'Vacaciones',        icon: '✈️',  color: '#1565c0', bg: '#e3f2fd', modalKey: 'Vacaciones' },
+    { key: 'enfermedad',    label: 'Enfermedad',        icon: '🤒',  color: '#c62828', bg: '#fce4ec', modalKey: 'Enfermedad' },
+    { key: 'extra_day',     label: 'Extra Day',         icon: '⭐',  color: '#f57f17', bg: '#fff8e1', modalKey: 'Extra Day' },
+    { key: 'cumpleanos',    label: 'Cumpleaños',        icon: '🎂',  color: '#6a1b9a', bg: '#f3e5f5', modalKey: 'Cumpleaños' },
+    { key: 'mudanza',       label: 'Mudanza',           icon: '📦',  color: '#bf360c', bg: '#fbe9e7', modalKey: 'Mudanza' },
+    { key: 'fallecimiento', label: 'Fallecimiento',     icon: '🕊️', color: '#37474f', bg: '#eceff1', modalKey: 'Fallecimiento' },
+    { key: 'chequeate',     label: 'Chequeate/Tramitate', icon: '🏥', color: '#00695c', bg: '#e0f2f1', modalKey: 'Chequeate/Tramitate' },
+    { key: 'maternidad',    label: 'Mat./Paternal',     icon: '👶',  color: '#880e4f', bg: '#fce4ec', modalKey: 'Maternidad/Paternidad' },
+  ];
+
   document.getElementById('leave-tiles').innerHTML = tiles.map(t => {
-    // For vacaciones with Argentina employees, use computed balance
-    let data;
-    if (t.key === 'vacaciones' && vacBal) {
-      data = { total: vacBal.total, used: vacBal.used, pending: vacBal.pending, available: vacBal.available };
-    } else {
-      data = b[t.key] || { total: 0, used: 0, pending: 0, available: 0 };
+    let data, avail, usedNum, pendingNum, isUnlimited = false, subLabel = 'días disponibles';
+    let extraContext = '';
+
+    if (t.key === 'vacaciones') {
+      const vb = vacBal || {};
+      usedNum    = vb.used    || 0;
+      pendingNum = vb.pending || 0;
+      avail      = vb.available !== undefined ? vb.available : 0;
+      if (vacBal) extraContext = `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacBal.total}d/año · ${vacBal.seniority} año${vacBal.seniority !== 1 ? 's' : ''} antigüedad</div>`;
+
+    } else if (t.key === 'enfermedad') {
+      data       = b.enfermedad || {};
+      usedNum    = data.used    || 0;
+      pendingNum = data.pending || 0;
+      avail      = null;
+      isUnlimited = true;
+      subLabel   = 'días sin límite';
+
+    } else if (t.key === 'extra_day') {
+      data       = b.extra_day || {};
+      usedNum    = data.used    || 0;
+      pendingNum = data.pending || 0;
+      avail      = data.available !== undefined ? data.available : Math.max(0, (data.total || 1) - usedNum - pendingNum);
+
+    } else if (t.key === 'cumpleanos') {
+      usedNum    = reqCount(['Cumpleaños','Día de Cumpleaños'], 'aprobado');
+      pendingNum = reqCount(['Cumpleaños','Día de Cumpleaños'], 'pendiente');
+      avail      = Math.max(0, 1 - usedNum - pendingNum);
+      extraContext = `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">1 día · beneficio PicallEx</div>`;
+
+    } else if (t.key === 'mudanza') {
+      usedNum    = reqCount('Mudanza', 'aprobado');
+      pendingNum = reqCount('Mudanza', 'pendiente');
+      avail      = Math.max(0, 2 - usedNum - pendingNum);
+      extraContext = `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">Hasta 2 días por mudanza</div>`;
+
+    } else if (t.key === 'fallecimiento') {
+      usedNum    = reqCount('Fallecimiento', 'aprobado');
+      pendingNum = reqCount('Fallecimiento', 'pendiente');
+      avail      = null;
+      isUnlimited = true;
+      subLabel   = 'por evento (3d LCT)';
+
+    } else if (t.key === 'chequeate') {
+      usedNum    = reqCount('Chequeate/Tramitate', 'aprobado');
+      pendingNum = reqCount('Chequeate/Tramitate', 'pendiente');
+      avail      = null;
+      isUnlimited = true;
+      subLabel   = 'usos · 4 hs c/u';
+
+    } else if (t.key === 'maternidad') {
+      data       = b.maternidad || {};
+      usedNum    = data.used    || 0;
+      pendingNum = data.pending || 0;
+      avail      = data.available !== undefined ? data.available : null;
+      if (avail === null || avail === 0) { avail = null; isUnlimited = true; subLabel = 'según ley vigente'; }
     }
 
-    // Use pre-calculated `available` field if present, else calculate
-    let avail = data.available !== undefined
-      ? data.available
-      : data.total - data.used - data.pending;
-
-    // Enfermedad: no tiene límite real, mostramos días usados solamente
-    const isUnlimited = t.key === 'enfermedad';
-    if (isUnlimited) avail = null;
-
-    const noBalance = false;
-
-    // For vacaciones, show seniority context
-    const vacContext = (t.key === 'vacaciones' && vacBal)
-      ? `${vacBal.total}d/año · ${vacBal.seniority} año${vacBal.seniority !== 1 ? 's' : ''} antigüedad`
-      : null;
-
-    // Bar: for extra_day, max is 5 per year; for vac, max is total
-    const barMax = t.key === 'extra_day' ? 5 : (data.total || 1);
-    const pct = barMax > 0 ? Math.min(100, Math.round((data.used / barMax) * 100)) : 0;
+    const barMax = t.key === 'extra_day' ? (b.extra_day?.total || 1) : t.key === 'vacaciones' ? (vacBal?.total || 14) : t.key === 'mudanza' ? 2 : t.key === 'cumpleanos' ? 1 : 1;
+    const pct    = (avail !== null && barMax > 0) ? Math.min(100, Math.round(((usedNum||0) / barMax) * 100)) : 0;
     const availColor = avail !== null && avail < 0 ? '#e53935' : t.color;
 
-    // Build tooltip for available number
     let availTip = '';
-    if (isUnlimited) {
-      availTip = 'Enfermedad no tiene límite de días en PicallEx.\nPresentá el certificado médico para justificar ausencias.';
-    } else if (t.key === 'vacaciones' && avail < 0) {
-      availTip = '⚠️ Saldo negativo: tomó más días de los que le corresponden en el período.\nLa política PicallEx permite adelantar vacaciones.\nEl saldo pendiente (${Math.abs(avail)}d) se descontará del siguiente período.'.replace('${Math.abs(avail)}d', Math.abs(avail) + 'd');
+    if (t.key === 'vacaciones' && avail < 0) {
+      availTip = `⚠️ Saldo negativo: tomó ${Math.abs(avail)} días más de los que le corresponden.\nLa política PicallEx permite adelantar vacaciones.`;
     } else if (t.key === 'vacaciones') {
-      let tip = `${avail} días disponibles de ${data.total} totales ${new Date().getFullYear()}.\n${data.used} ya utilizados · ${data.pending} en revisión.`;
-      if (vacBal?.priorYear) tip += `\n⚠️ Quedan ${vacBal.priorYear.available}d del ${vacBal.priorYear.year} sin tomar.`;
-      tip += '\nHacé clic para solicitar vacaciones.';
-      availTip = tip;
-    } else if (t.key === 'extra_day') {
-      availTip = `Extra Day: beneficio especial no acumulable.\n${avail} disponible${avail !== 1 ? 's' : ''} de ${data.total} asignados este año.\nHacé clic para solicitarlo.`;
-    } else if (t.key === 'maternidad') {
-      availTip = 'Licencia de maternidad/paternidad.\nActivala cuando corresponda. Los días se configuran según ley vigente.';
+      availTip = `${avail} días disponibles · ${usedNum} usados · ${pendingNum} en revisión.\nHacé clic para solicitar vacaciones.`;
+    } else if (isUnlimited) {
+      availTip = `${usedNum} usado${usedNum !== 1 ? 's' : ''} este año.`;
     }
 
+    const bigVal = isUnlimited ? usedNum : avail;
+    const bigSub = isUnlimited ? subLabel : (avail < 0 ? '⚠️ saldo negativo' : subLabel);
+
     return `
-      <div class="leave-tile" style="border-top:3px solid ${t.color}" onclick="openLeaveModal('${t.key === 'extra_day' ? 'Extra Day' : t.label}')">
+      <div class="leave-tile" style="border-top:3px solid ${t.color}" onclick="openLeaveModal('${t.modalKey}')">
         <div class="lt-header">
           <div class="lt-type">${t.label}</div>
-          <div class="lt-icon" style="background:${t.bg || t.color+'22'};color:${t.color}">${t.icon}</div>
+          <div class="lt-icon" style="background:${t.bg};color:${t.color}">${t.icon}</div>
         </div>
-        <div class="lt-big" style="color:${noBalance ? 'var(--c-muted)' : availColor}" data-tip="${noBalance ? 'Sin datos de saldo disponibles.' : availTip.replace(/"/g, '&quot;')}">${noBalance ? '—' : isUnlimited ? '∞' : avail}</div>
-        <div class="lt-sub">${noBalance ? 'sin datos' : isUnlimited ? 'días sin límite' : (avail < 0 ? '⚠️ saldo negativo' : 'días disponibles')}</div>
-        ${vacContext ? `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacContext}</div>` : ''}
-        ${t.key === 'vacaciones' && vacBal?.priorYear ? `<div style="font-size:10px;color:#e65100;margin-bottom:4px">⚠️ ${vacBal.priorYear.available}d del ${vacBal.priorYear.year} sin tomar</div>` : ''}
-        <div class="lt-bar"><div class="lt-bar-fill" style="width:${noBalance ? 0 : pct}%;background:${t.color}"></div></div>
+        <div class="lt-big" style="color:${isUnlimited ? t.color : availColor}" ${availTip ? `data-tip="${availTip.replace(/"/g,'&quot;')}"` : ''}>${bigVal ?? '—'}</div>
+        <div class="lt-sub">${bigSub}</div>
+        ${extraContext}
+        <div class="lt-bar"><div class="lt-bar-fill" style="width:${pct}%;background:${t.color}"></div></div>
         <div class="lt-legend">
-          <div class="lt-legend-item" data-tip="Días ya aprobados y gozados."><div class="lt-dot" style="background:${t.color}"></div>${data.used} usados</div>
-          <div class="lt-legend-item" data-tip="Días solicitados aún en revisión por el HR Lead."><div class="lt-dot" style="background:#ffd54f"></div>${data.pending} pendiente</div>
+          <div class="lt-legend-item" data-tip="Días ya aprobados y gozados."><div class="lt-dot" style="background:${t.color}"></div>${usedNum||0} usados</div>
+          <div class="lt-legend-item" data-tip="Días solicitados aún en revisión."><div class="lt-dot" style="background:#ffd54f"></div>${pendingNum||0} pendiente</div>
         </div>
       </div>
     `;
@@ -5373,91 +5377,101 @@ function clearLicFilters() {
 ═══════════════════════════════════════════════════ */
 function openLeaveModal(type) {
   currentLeaveType = type;
-  const emp = currentEmployee || DB.employees[0];
-  const b = emp.leave_balances;
+  const emp  = currentEmployee || DB.employees[0];
+  const b    = emp.leave_balances || {};
+  const reqs = emp.leave_requests || [];
+  const y    = new Date().getFullYear();
+  const today = new Date().toISOString().split('T')[0];
 
-  const keyMap = { 'Vacaciones': 'vacaciones', 'Enfermedad': 'enfermedad', 'Extra Day': 'extra_day', 'Maternidad/Paternidad': 'maternidad' };
-  const key = keyMap[type] || 'vacaciones';
-
-  // For vacaciones in Argentina, use dynamic calculation
-  let bal, avail, acumulados, _vacBal = null;
-  if (key === 'vacaciones' && (emp.country === 'Argentina' || !emp.country)) {
-    _vacBal    = calcVacBalance(emp);
-    bal        = { total: _vacBal.total, used: _vacBal.used, pending: _vacBal.pending };
-    avail      = _vacBal.available;
-    acumulados = _vacBal.total;
-  } else {
-    bal        = b?.[key] || { total: 0, used: 0, pending: 0 };
-    avail      = bal.available !== undefined
-                 ? (bal.available - (bal.pending || 0))
-                 : (bal.total - bal.used - (bal.pending || 0));
-    acumulados = bal.available !== undefined ? bal.available + bal.used : bal.total;
-  }
-  const noBalance = false;
-
-  document.getElementById('modal-title').textContent = `Solicitar ${type}`;
-  document.getElementById('modal-subtitle').textContent = `Colaborador: ${emp.name}`;
-
-  let extra = '';
-
-  if (type === 'Enfermedad' || type === 'Chequeate/Tramitate') {
-    extra = `
-      <div id="cert-upload-section" style="margin-top:12px">
-        <label style="font-size:13px; font-weight:600; color:var(--c-text)">Certificado médico${type === 'Enfermedad' ? ' <span style="color:var(--c-danger)">*</span>' : ''}</label>
-        <div style="margin-top:6px; display:flex; align-items:center; gap:8px">
-          <label class="btn-secondary" style="cursor:pointer; padding:6px 12px; font-size:13px">
-            📎 Adjuntar archivo
-            <input type="file" id="cert-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleCertUpload(this)">
-          </label>
-          <span id="cert-file-name" style="font-size:12px; color:var(--c-muted)">Sin archivo</span>
-        </div>
-      </div>
-      <div class="modal-warning" style="margin-top:10px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        El certificado médico debe ser presentado dentro de las 48 hs de iniciada la ausencia.
-      </div>`;
+  function reqCount(types, status) {
+    const ta = Array.isArray(types) ? types : [types];
+    return reqs.filter(r => ta.includes(r.type) && new Date(r.from).getFullYear() === y && r.status === status)
+               .reduce((s, r) => s + (r.days || 1), 0);
   }
 
-  if (type === 'Extra Day') {
-    extra = `<div class="modal-warning">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      El Extra Day es un beneficio no acumulable. Al solicitarlo se consume el saldo disponible del año vigente.
-    </div>`;
+  document.getElementById('modal-title').textContent     = `Solicitar ${type}`;
+  document.getElementById('modal-subtitle').textContent  = `Colaborador: ${emp.name}`;
+
+  // Build balance row and extras per type
+  let col1Label = 'Disponibles', col1Val, col2Label = 'Usados este año', col2Val, showBalance = true;
+  let extra = '', singleDay = false;
+
+  if (type === 'Vacaciones') {
+    const vb    = (emp.country === 'Argentina' || !emp.country) ? calcVacBalance(emp) : null;
+    const avail = vb ? vb.available : (b.vacaciones?.available ?? 0);
+    const used  = vb ? vb.used      : (b.vacaciones?.used      || 0);
+    col1Label = 'Disponibles'; col1Val = avail;
+    col2Label = `Días LCT ${y}`; col2Val = vb ? vb.total : (b.vacaciones?.days_per_year || 14);
+    if (avail < 0) extra = `<div class="modal-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Sin saldo disponible — queda a criterio del HR Lead aprobar.</div>`;
+
+  } else if (type === 'Enfermedad') {
+    const used  = reqCount('Enfermedad', 'aprobado');
+    col1Label = 'Sin límite'; col1Val = '∞';
+    col2Label = `Usados ${y}`; col2Val = used;
+    extra = `<div id="cert-upload-section" style="margin-top:12px"><label style="font-size:13px;font-weight:600;color:var(--c-text)">Certificado médico <span style="color:var(--c-danger)">*</span></label><div style="margin-top:6px;display:flex;align-items:center;gap:8px"><label class="btn-secondary" style="cursor:pointer;padding:6px 12px;font-size:13px">📎 Adjuntar archivo<input type="file" id="cert-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleCertUpload(this)"></label><span id="cert-file-name" style="font-size:12px;color:var(--c-muted)">Sin archivo</span></div></div><div class="modal-warning" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Presentá el certificado dentro de las 48hs de iniciada la ausencia.</div>`;
+
+  } else if (type === 'Extra Day') {
+    const ed    = b.extra_day || {};
+    const avail = ed.available !== undefined ? ed.available : Math.max(0,(ed.total||1)-(ed.used||0)-(ed.pending||0));
+    col1Label = 'Disponibles'; col1Val = avail;
+    col2Label = 'Asignados';   col2Val = ed.total || 1;
+    singleDay = true;
+    extra = `<div class="modal-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>El Extra Day es un beneficio no acumulable. Al usarlo se consume el saldo del año vigente.</div>`;
+
+  } else if (type === 'Cumpleaños') {
+    const used  = reqCount(['Cumpleaños','Día de Cumpleaños'], 'aprobado');
+    col1Label = 'Disponibles'; col1Val = Math.max(0, 1 - used);
+    col2Label = 'Asignados';   col2Val = 1;
+    singleDay = true;
+    extra = `<div class="modal-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Podés tomarlo el día de tu cumpleaños o durante esa semana. Beneficio PicallEx 🎂</div>`;
+
+  } else if (type === 'Mudanza') {
+    const used  = reqCount('Mudanza', 'aprobado');
+    col1Label = 'Disponibles'; col1Val = Math.max(0, 2 - used);
+    col2Label = 'Máximo';      col2Val = 2;
+    extra = `<div class="modal-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Hasta 2 días por mudanza. Coordiná con tu líder con anticipación 📦</div>`;
+
+  } else if (type === 'Fallecimiento') {
+    const used  = reqCount('Fallecimiento', 'aprobado');
+    col1Label = 'Días LCT';  col1Val = 3;
+    col2Label = `Usados ${y}`; col2Val = used;
+    extra = `<div class="modal-warning" style="background:#eceff1;border-color:#546e7a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>3 días por fallecimiento de familiar directo según LCT. Adjuntá documentación si corresponde 🕊️</div>`;
+
+  } else if (type === 'Chequeate/Tramitate') {
+    const used  = reqCount('Chequeate/Tramitate', 'aprobado');
+    col1Label = 'Usos este año'; col1Val = used;
+    col2Label = 'Duración';      col2Val = '4hs';
+    singleDay = true;
+    extra = `<div id="cert-upload-section" style="margin-top:12px"><label style="font-size:13px;font-weight:600;color:var(--c-text)">Comprobante (opcional)</label><div style="margin-top:6px;display:flex;align-items:center;gap:8px"><label class="btn-secondary" style="cursor:pointer;padding:6px 12px;font-size:13px">📎 Adjuntar archivo<input type="file" id="cert-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleCertUpload(this)"></label><span id="cert-file-name" style="font-size:12px;color:var(--c-muted)">Sin archivo</span></div></div><div class="modal-warning" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>4 horas para trámites o controles médicos 🏥</div>`;
+
+  } else if (type === 'Maternidad/Paternidad') {
+    const md    = b.maternidad || {};
+    col1Label = 'Según ley'; col1Val = '—';
+    col2Label = 'Usado';     col2Val = md.used || 0;
+    extra = `<div class="modal-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Los días se configuran según ley vigente en cada país. Contactá a tu HR Lead para activarla 👶</div>`;
   }
 
-  if (type === 'Vacaciones' && avail < 0) {
-    extra = `<div class="modal-warning">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Sin saldo disponible — la solicitud queda a criterio del HR Lead para aprobar.
-    </div>`;
-  }
-
-  // Prior year pending balance notice
-  const priorYearExtra = (_vacBal?.priorYear)
-    ? `<div class="modal-warning" style="background:#fff3e0;border-color:#e65100;color:#bf360c">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Tiene <strong>${_vacBal.priorYear.available} días</strong> del ${_vacBal.priorYear.year} sin tomar. Recordale que los use antes de superponer con los de ${new Date().getFullYear()}.
-      </div>`
-    : '';
+  const commentRequired = ['Vacaciones','Enfermedad'].includes(type);
+  const placeholder = type === 'Vacaciones' ? 'Indicá las fechas y coordinación con tu líder...'
+    : type === 'Enfermedad' ? 'Describí el motivo y la duración estimada...'
+    : 'Contexto adicional para el HR Lead (opcional)...';
 
   document.getElementById('modal-body').innerHTML = `
     <div class="modal-balance">
-      <div class="mb-item"><div class="mb-num">${acumulados}</div><div class="mb-label">Total ${new Date().getFullYear()}</div></div>
-      <div class="mb-item"><div class="mb-num">${bal.used}</div><div class="mb-label">Tomados</div></div>
-      <div class="mb-item"><div class="mb-num" style="color:${avail < 1 ? 'var(--c-danger)' : avail < 5 ? '#e65100' : 'var(--c-accent)'}">${avail}</div><div class="mb-label">Disponibles</div></div>
+      <div class="mb-item"><div class="mb-num" style="color:${typeof col1Val === 'number' && col1Val < 0 ? 'var(--c-danger)' : 'inherit'}">${col1Val}</div><div class="mb-label">${col1Label}</div></div>
+      <div class="mb-item"><div class="mb-num">${col2Val}</div><div class="mb-label">${col2Label}</div></div>
     </div>
-    ${priorYearExtra}
     <div class="modal-field">
       <div class="modal-label">Fecha de inicio</div>
-      <input type="date" class="modal-input" id="modal-from" min="${new Date().toISOString().split('T')[0]}"/>
+      <input type="date" class="modal-input" id="modal-from" min="${today}"/>
     </div>
-    <div class="modal-field ${type === 'Extra Day' ? 'hidden' : ''}">
+    <div class="modal-field ${singleDay ? 'hidden' : ''}">
       <div class="modal-label">Fecha de fin</div>
-      <input type="date" class="modal-input" id="modal-to" min="${new Date().toISOString().split('T')[0]}"/>
+      <input type="date" class="modal-input" id="modal-to" min="${today}"/>
     </div>
     <div class="modal-field">
-      <div class="modal-label">Comentario ${(type === 'Vacaciones' || type === 'Enfermedad') ? '<span style="color:var(--c-danger)">*</span>' : '(opcional)'}</div>
-      <textarea class="modal-input" id="modal-comment" rows="2" placeholder="${type === 'Vacaciones' ? 'Indicá las fechas y coordinación con tu líder...' : type === 'Enfermedad' ? 'Describí el motivo y la duración estimada...' : 'Contexto adicional para el HR Lead...'}"></textarea>
+      <div class="modal-label">Comentario ${commentRequired ? '<span style="color:var(--c-danger)">*</span>' : '(opcional)'}</div>
+      <textarea class="modal-input" id="modal-comment" rows="2" placeholder="${placeholder}"></textarea>
     </div>
     ${extra}
   `;
@@ -5896,18 +5910,19 @@ function nextMonth() {
 // Rebuild gantt_events from real leave_requests for the current month
 // Mapa tipo real → clase CSS del Gantt (para color)
 const LEAVE_TYPE_CSS = {
-  'Vacaciones': 'vac',
-  'Enfermedad': 'sick',
-  'Extra Day': 'extra',
-  'Maternidad/Paternidad': 'mat',
-  'Día de Cumpleaños': 'bday',
-  'Cumpleaños': 'bday',
-  'Fallecimiento': 'Fallecimiento',
-  'Trámite': 'Trámite',
-  'Mudanza': 'Mudanza',
-  'Paternidad': 'mat',
-  'Final Days': 'Final Days',
-  'Licencia Especial': 'Licencia Especial',
+  'Vacaciones':             'vac',
+  'Enfermedad':             'sick',
+  'Extra Day':              'extra',
+  'Maternidad/Paternidad':  'mat',
+  'Día de Cumpleaños':      'bday',
+  'Cumpleaños':             'bday',
+  'Fallecimiento':          'fall',
+  'Trámite':                'chequeate',
+  'Chequeate/Tramitate':    'chequeate',
+  'Mudanza':                'mudanza-ev',
+  'Paternidad':             'mat',
+  'Final Days':             'Final Days',
+  'Licencia Especial':      'Licencia Especial',
 };
 
 function buildGanttEvents() {
@@ -5954,14 +5969,18 @@ const LEAVE_TYPE_STYLE = {
   'Vacaciones':           { emoji:'✈️', bg:'#bbdefb', text:'#0d47a1' },
   'Extra Day':            { emoji:'🏖️', bg:'#ffe0b2', text:'#e65100' },
   'Enfermedad':           { emoji:'💊',  bg:'#ffcdd2', text:'#b71c1c' },
-  'Mudanza':              { emoji:'📦',  bg:'#ffe0b2', text:'#bf360c' },
+  'Mudanza':              { emoji:'📦',  bg:'#fbe9e7', text:'#bf360c' },
   'Día de Cumpleaños':    { emoji:'🎂',  bg:'#f3e5f5', text:'#6a1b9a' },
   'Cumpleaños':           { emoji:'🎂',  bg:'#f3e5f5', text:'#6a1b9a' },
   'Chequeate/Tramitate':  { emoji:'🏥',  bg:'#e0f2f1', text:'#00695c' },
+  'Fallecimiento':        { emoji:'🕊️', bg:'#eceff1', text:'#37474f' },
   'Licencia Especial':    { emoji:'📋',  bg:'#ede7f6', text:'#4527a0' },
   'Final Days':           { emoji:'📚',  bg:'#c5cae9', text:'#1a237e' },
   'Maternidad/Paternidad':{ emoji:'👶',  bg:'#fce4ec', text:'#880e4f' },
   'bday':                 { emoji:'🎂',  bg:'#f3e5f5', text:'#6a1b9a' },
+  'fall':                 { emoji:'🕊️', bg:'#eceff1', text:'#37474f' },
+  'chequeate':            { emoji:'🏥',  bg:'#e0f2f1', text:'#00695c' },
+  'mudanza-ev':           { emoji:'📦',  bg:'#fbe9e7', text:'#bf360c' },
   'default':              { emoji:'📅',  bg:'#f5f5f5', text:'#616161' },
 };
 function getLeaveStyle(type) {
@@ -6036,7 +6055,7 @@ function renderGantt() {
           from_day: ev.from_day, to_day: ev.to_day,
           label: label, req_id: ev.req_id || ''
         }));
-        const stdTypes = ['vac','sick','extra','mat','bday'];
+        const stdTypes = ['vac','sick','extra','mat','bday','fall','chequeate','mudanza-ev','cumple'];
         const bgInline = stdTypes.includes(ev.type) ? '' : `background:${leaveStyle.bg};`;
         const emojiLabel = isFirst ? (leaveStyle.emoji || icon) : '';
         gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="${bgInline}" onclick="openLDP(decodeURIComponent('${evDataStr}'))">${emojiLabel}</div>`;
