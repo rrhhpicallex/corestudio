@@ -5895,11 +5895,7 @@ function renderGantt() {
         }));
         const stdTypes = ['vac','sick','extra','mat','bday'];
         const bgInline = stdTypes.includes(ev.type) ? '' : `background:${leaveStyle.bg};`;
-        gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="${bgInline}color:${leaveStyle.text}" onclick="openLDP(decodeURIComponent('${evDataStr}'))">`;
-        if (isFirst) {
-          gridHtml += `<span style="position:absolute;top:50%;left:4px;transform:translateY(-50%);font-size:11px;line-height:1;white-space:nowrap">${icon}</span>`;
-        }
-        gridHtml += `</div>`;
+        gridHtml += `<div class="gantt-event ${ev.type}" title="${label}" style="${bgInline}" onclick="openLDP(decodeURIComponent('${evDataStr}'))"></div>`;
       }
       gridHtml += `</div>`;
     }
