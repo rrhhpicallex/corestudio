@@ -7547,53 +7547,7 @@ function filterEquipoDept(dept, btn) {
   });
 }
 
-function openVerComo(empId) {
-  if (!empId) return;
-  const e = DB.employees.find(x => x.id === empId);
-  if (!e) return;
-  const modal = document.getElementById('vc-modal');
-  const av = document.getElementById('vc-avatar');
-  av.textContent = e.initials;
-  av.style.background = e.color;
-  document.getElementById('vc-name').textContent = e.name;
-  document.getElementById('vc-title').textContent = (e.title||'') + ' · ' + (e.dept||'');
-  // Render leave tiles into modal
-  const tilesEl = document.getElementById('vc-leave-tiles');
-  const savedTarget = document.getElementById('leave-tiles');
-  // Temporarily swap target, render, restore
-  savedTarget.id = '_lt_bak';
-  tilesEl.id = 'leave-tiles';
-  renderLeaveTiles(e);
-  tilesEl.id = 'vc-leave-tiles';
-  savedTarget.id = 'leave-tiles';
-  // Render requests table
-  const reqEl = document.getElementById('vc-requests');
-  if (!e.leave_requests || e.leave_requests.length === 0) {
-    reqEl.innerHTML = '<p style="color:var(--c-muted);font-size:13px">Sin historial de solicitudes.</p>';
-  } else {
-    reqEl.innerHTML = `<div style="overflow-x:auto"><table class="request-table" style="width:100%">
-      <thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th><th>Nota</th><th>Log</th></tr></thead>
-      <tbody>${e.leave_requests.map(r => {
-        const noteText = (r.note||'').replace(/^"+|"+$/g,'').trim();
-        const noteTrunc = noteText.length > 55 ? noteText.slice(0,52)+'…' : noteText;
-        return `<tr>
-          <td><span class="chip" style="font-size:11px">${r.type}</span></td>
-          <td style="font-size:12px">${fmtDateShort(r.from)}</td>
-          <td style="font-size:12px">${fmtDateShort(r.to)}</td>
-          <td><strong>${r.days}</strong></td>
-          <td><span class="status-chip ${r.status}"><span class="status-dot"></span>${capitalize(r.status)}</span></td>
-          <td style="font-size:11px;max-width:180px">${noteTrunc ? `<span title="${noteText.replace(/"/g,'&quot;').replace(/\n/g,' ')}">${noteTrunc}</span>` : '<span style="color:var(--c-muted)">—</span>'}${r.cert_url ? ` <a href="${r.cert_url}" target="_blank" style="color:var(--c-accent)">📎</a>` : ''}</td>
-          <td style="font-size:11px;color:var(--c-muted)">${r.ts||''}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>`;
-  }
-  modal.style.display = 'flex';
-}
-
-function closeVerComo() {
-  document.getElementById('vc-modal').style.display = 'none';
-}
+// openVerComo — impersonación completa — definida arriba (línea ~7165)
 
 // ── Slack Notifications ──────────────────────────────
 async function notifySlack(payload) {
