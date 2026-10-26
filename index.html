@@ -4093,51 +4093,22 @@ a { color: inherit; text-decoration: none; }
             <h1 style="font-family:var(--font-serif);font-size:26px;font-weight:400;margin-bottom:4px">Biblioteca</h1>
             <p style="color:var(--c-muted);font-size:13px">Documentos y recursos del equipo</p>
           </div>
-          <button id="bib-add-btn" onclick="openBibModal()" class="btn-primary" style="display:none">+ Agregar documento</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px" id="bib-cat-filters">
-          <button class="equipo-dept-btn active" onclick="filterBib('all',this)">Todos</button>
-          <button class="equipo-dept-btn" onclick="filterBib('politicas',this)">Políticas</button>
-          <button class="equipo-dept-btn" onclick="filterBib('beneficios',this)">Beneficios</button>
-          <button class="equipo-dept-btn" onclick="filterBib('procedimientos',this)">Procedimientos</button>
-          <button class="equipo-dept-btn" onclick="filterBib('formularios',this)">Formularios</button>
-          <button class="equipo-dept-btn" onclick="filterBib('otros',this)">Otros</button>
-        </div>
-        <div id="bib-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px" id="bib-cat-filters"></div>
+        <div id="bib-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
       </div>
 
-      <!-- ─ MODAL: BIBLIOTECA ─ -->
-      <div id="bib-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;align-items:center;justify-content:center">
-        <div style="background:var(--c-surface);border-radius:14px;padding:28px 28px 24px;width:440px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.18)">
-          <h3 style="font-family:var(--font-serif);font-size:20px;font-weight:400;margin-bottom:18px">Agregar documento</h3>
-          <div style="display:flex;flex-direction:column;gap:12px">
+      <!-- ─ MODAL: ARTÍCULO BIBLIOTECA ─ -->
+      <div id="bib-article-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto" onclick="if(event.target===this)closeBibArticle()">
+        <div style="background:var(--c-surface);border-radius:16px;width:640px;max-width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);position:relative">
+          <div style="padding:24px 28px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
             <div>
-              <div class="modal-label">Título <span style="color:var(--c-danger)">*</span></div>
-              <input class="modal-input" id="bib-title" placeholder="Ej: Reglamento interno 2026" style="width:100%;box-sizing:border-box"/>
+              <div id="bib-art-cat" style="font-size:11px;font-weight:600;color:var(--c-accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px"></div>
+              <h2 id="bib-art-title" style="font-family:var(--font-serif);font-size:20px;font-weight:400;color:var(--c-text);margin:0"></h2>
             </div>
-            <div>
-              <div class="modal-label">Categoría</div>
-              <select class="modal-input" id="bib-cat" style="width:100%;box-sizing:border-box">
-                <option value="politicas">Políticas</option>
-                <option value="beneficios">Beneficios</option>
-                <option value="procedimientos">Procedimientos</option>
-                <option value="formularios">Formularios</option>
-                <option value="otros">Otros</option>
-              </select>
-            </div>
-            <div>
-              <div class="modal-label">URL del documento <span style="color:var(--c-danger)">*</span></div>
-              <input class="modal-input" id="bib-url" placeholder="https://drive.google.com/..." style="width:100%;box-sizing:border-box"/>
-            </div>
-            <div>
-              <div class="modal-label">Descripción (opcional)</div>
-              <input class="modal-input" id="bib-desc" placeholder="Breve descripción del contenido" style="width:100%;box-sizing:border-box"/>
-            </div>
+            <button onclick="closeBibArticle()" style="background:none;border:none;cursor:pointer;color:var(--c-muted);font-size:22px;line-height:1;flex-shrink:0;margin-top:2px">×</button>
           </div>
-          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
-            <button class="btn-secondary" onclick="closeBibModal()">Cancelar</button>
-            <button class="btn-primary" onclick="saveBibDoc()">Guardar</button>
-          </div>
+          <div id="bib-art-body" style="padding:20px 28px 28px;font-size:14px;line-height:1.7;color:var(--c-text)"></div>
         </div>
       </div>
 
@@ -7260,79 +7231,233 @@ function closePubProfile() {
 /* ═══════════════════════════════════════════════════
    BIBLIOTECA
 ═══════════════════════════════════════════════════ */
-const BIB_CAT_LABELS = { politicas:'Políticas', beneficios:'Beneficios', procedimientos:'Procedimientos', formularios:'Formularios', otros:'Otros' };
+const BIBLIOTECA = [
+  {
+    cat: '🏖️ Tiempo Fuera',
+    articulos: [
+      {
+        titulo: 'Pedido de Vacaciones',
+        md: '**Proceso de pedido de vacaciones 🏝️**\n\n**1. Solicitar aprobación a través de la plataforma.** Cadena de aprobadores: líder → RRHH.\n\nMensaje a enviar como "Comentario" al solicitar las vacaciones:\n\n> "Equipo, solicito mis vacaciones desde el día **x-x-x** hasta el día **x-x-x**, reincorporándome el día **x-x-x**. Ya fue coordinado con mi líder y equipo! Saludos"\n\n**2. Configurar su Calendar como "Fuera de Oficina".**\n\nGracias! 🩷',
+        links: []
+      },
+      {
+        titulo: '¡Conocé tus días de vacaciones y cómo gestionarlos! 🌴',
+        md: 'Queremos recordarte cómo funcionan las vacaciones según lo establecido por la Ley de Contrato de Trabajo de Argentina (Art. 151).\n\n**Días según antigüedad:**\n\n- **Menos de 5 años:** 14 días corridos.\n- **Entre 5 y 10 años:** 21 días corridos.\n- **Entre 10 y 20 años:** 28 días corridos.\n- **Más de 20 años:** 35 días corridos.\n\n**Aspectos importantes:**\n\n- ✅ **Plazo mínimo:** las vacaciones deben incluir al menos **7 días corridos**.\n- ✅ **Cómputo:** se contabilizan fines de semana y feriados dentro del período.\n- ✅ **Anticipación:** comunicar con al menos **20 días de anticipación**.\n- ✅ **Inicio:** a partir de un día **lunes** (o primer hábil siguiente si es feriado).\n\n**Plus vacacional:** recibís un adicional que corresponde a la parte proporcional de tu sueldo por los días tomados.',
+        links: []
+      },
+      {
+        titulo: 'Extra Days',
+        md: '🏝️ Sobre los **Extra Days**:\n\n- Contamos con **5 días** adicionales a las vacaciones:\n  - **3 días** deben usarse hasta julio inclusive, de lo contrario se pierden.\n  - Los **2 días** restantes van de agosto a diciembre inclusive.\n\nLos Extra Days **no son acumulables con feriados**, según el [Manual de Bases y Condiciones](https://sites.google.com/picallex.com/pcx-space/beneficios-picallex-plus/bases-y-condiciones-pcx). Sin embargo, los feriados en fin de semana no son feriados laborables, por lo que aplica el pedido de Extra Day.\n\n👇🏽 *Ejemplo:* podés pedir Extra Day el 23 o 26 de mayo, aunque el 25 sea feriado (domingo).\n\nCuando solicités un Extra Day, recuerden que ya debe estar coordinado con el líder y el equipo 💪🏽',
+        links: ['https://sites.google.com/picallex.com/pcx-space/beneficios-picallex-plus/bases-y-condiciones-pcx']
+      },
+      {
+        titulo: 'Pedido de Extra Days',
+        md: '> "Equipo, solicito tomarme un Extra Day el día **x-x-x**. Ya fue coordinado con mi líder y equipo! Saludos"',
+        links: []
+      },
+      {
+        titulo: 'Pedido de día por Enfermedad',
+        md: 'En caso de solicitar un día por enfermedad, recuerden que deben **adjuntar el certificado médico correspondiente**.\n\nAl momento de solicitar, incluir el siguiente texto:\n\n> "Solicito x días, tal como se indica en el presente certificado médico. Ya fue notificado a mi líder y equipo"\n\nCualquier duda, a disposición. Gracias! 🩷',
+        links: []
+      },
+      {
+        titulo: 'Día de Cumpleaños',
+        md: '🎂 Solicitar el día en *Ir a mi perfil → Licencias → Día de Cumpleaños*.\n\nRecuerden coordinar previamente con su equipo y líder! A celebrar! Gracias 🩷',
+        links: []
+      }
+    ]
+  },
+  {
+    cat: '😎 Funcionalidades Core Studio',
+    articulos: [
+      {
+        titulo: 'Toda tu información personal en un solo lugar',
+        md: 'Tu **legajo digital** ahora estará siempre actualizado y accesible. Podrás:\n\n- Revisar y actualizar tu **información personal**.\n- Cargar **certificados médicos** o **documentación** requerida.\n- Asegurarte de que tus datos estén completos y correctos.\n- Actualizar tu **cambio de domicilio** a través de un formulario! 🙌🏽\n\nCon esta funcionalidad, ¡podrán gestionar sus datos con autonomía!',
+        links: []
+      },
+      {
+        titulo: 'Tu espacio centralizado de documentos 📜',
+        md: 'En esta sección encontrarás toda la documentación importante que necesitás, como:\n\n- Recibos de sueldo.\n- Certificados laborales.\n- Políticas y procedimientos internos de la empresa.\n- Formularios para licencias y otros trámites.\n\n¡Adiós a los archivos dispersos! Ahora tendrás todo organizado y accesible en cualquier momento 🗂️',
+        links: []
+      },
+      {
+        titulo: 'Mantente al día con nuestro calendario corporativo 📆',
+        md: 'La sección de **Calendario** te permitirá:\n\n- Visualizar los feriados nacionales y provinciales 🇦🇷🇺🇸🇨🇴\n- Conocer eventos especiales como aniversarios y cumpleaños 🎂\n- Saber qué persona está fuera por vacaciones y/o Extra Day 🏖️\n\nAdemás, podrás integrar fácilmente el calendario con el de tu dispositivo personal.',
+        links: []
+      },
+      {
+        titulo: '¡Gestioná tus vacaciones más fácil que nunca!',
+        md: 'Solicitar tus días de vacaciones ahora será mucho más rápido y simple. Desde la plataforma podrás:\n\n- Ver cuántos **días de vacaciones** tenés disponibles.\n- Enviar tu **solicitud** de manera automática.\n- Hacer **seguimiento del estado** de tu solicitud (pendiente, aprobada, etc.).\n\n¡Olvidate de los correos y la incertidumbre! Todo el proceso es transparente y accesible en un par de clics 🛫',
+        links: []
+      }
+    ]
+  },
+  {
+    cat: '👩‍⚖️ Documentos legales',
+    desc: 'Acá encontrarán los documentos legales de interés.',
+    articulos: [
+      {
+        titulo: 'Código de convivencia',
+        md: 'Adjunto el documento con las normas y buenas prácticas para un entorno de trabajo armonioso y colaborativo.\n\nAquí encontrarán:\n\n- **Derechos del equipo:** remuneración, beneficios, promoción, respeto a la información personal, ambiente laboral seguro.\n- **Deberes:** colaboración, diligencia, reserva de información, asistencia, cuidado de instrumentos, puntualidad, respeto de instrucciones, limpieza y orden, capacitaciones.\n- **Políticas** de uso de e-mail y de redes sociales.\n- **Actualización de información.**\n- **Licencias** (vacaciones y días especiales).\n\n📎 **Recordá que es obligatorio conocer y respetar el Código de Convivencia.**',
+        links: ['/docs/codigo-convivencia.pdf'],
+        linkLabels: ['Descargar Código de Convivencia (PDF)']
+      }
+    ]
+  },
+  {
+    cat: '💫 Beneficios PCX',
+    desc: 'Consideraciones respecto a algunos beneficios que ofrecemos desde PCX.',
+    articulos: [
+      {
+        titulo: 'Préstamos: Consideraciones y Solicitudes',
+        md: 'Teniendo en cuenta que la solicitud de préstamos es uno de los beneficios que ofrecemos en PCX, aquí desarrollamos algunos puntos clave.\n\n**Requisitos para ser elegible:**\n\n- Empleados en relación de dependencia y monotributistas.\n- Antigüedad mínima de 1 año en la empresa.\n- Sin preexistencia de préstamos pendientes.\n- Buen desempeño laboral, evidenciado por su líder.\n- Antecedente de cumplimiento de préstamos anteriores.\n\n**👉🏽 Cómo solicitarlo:**\n\n1. Enviar mail a [rrhh@picallex.com](mailto:rrhh@picallex.com), con copia a su líder y a [pagos@picallex.com](mailto:pagos@picallex.com).\n2. Indicar: monto solicitado, moneda preferida y fecha deseada.\n3. Recibirás respuesta dentro de los **10 días hábiles** posteriores.\n\nRecuerden realizar estas solicitudes con tiempo en la medida de lo posible! Gracias 🩷',
+        links: ['mailto:rrhh@picallex.com', 'mailto:pagos@picallex.com']
+      },
+      {
+        titulo: 'Bases y Condiciones PCX Plus 2026',
+        md: '✨ Los beneficios PCX Plus 2026 están actualizados!\n\nHacé click en el link para ver el documento completo.',
+        links: ['https://drive.google.com/file/d/1LS0zHZeycLQTCHWP5nKQ7Ea9jitY2ytJ/view'],
+        linkLabels: ['Ver Beneficios PCX Plus 2026']
+      }
+    ]
+  },
+  {
+    cat: '✨ Onboarding',
+    desc: 'Guía básica de supervivencia para los nuevos integrantes de PCX. Bienvenid@ al equipo 🐾',
+    articulos: [
+      {
+        titulo: 'Manual de Bienvenida',
+        md: 'Nuestro **Manual de Bienvenida**: las puertas de nuestra casa, de nuestra cultura y de las respuestas a todas tus preguntas! 🚀\n\nTe pedimos que te tomes el tiempo de revisarlo, de leerlo a conciencia y de sacarle el máximo provecho. Estamos para ayudarte y responder tus dudas al respecto 💪🏽\n\n*(Documento disponible próximamente)*',
+        links: []
+      },
+      {
+        titulo: 'Saludo de los líderes de área',
+        md: 'Cuando nos dirigimos a un lugar nuevo, es importante saber hacia dónde estamos yendo, con quiénes y por qué! ✨\n\nLos **líderes** de las diferentes áreas de PCX nos dan un poco de contexto sobre sus áreas y el **porqué** de las mismas en menos de 1 minuto! ⌛️',
+        links: ['https://drive.google.com/drive/folders/1YAb-ZgmmsNexSZugWJ9SbLEgENLhNwJE'],
+        linkLabels: ['Ver videos de bienvenida 🎥']
+      },
+      {
+        titulo: 'Manual del Sentido Común',
+        md: '*(Documento disponible próximamente)*',
+        links: []
+      }
+    ]
+  },
+  {
+    cat: '🎓 Certificaciones',
+    desc: 'Instancias de certificaciones del programa de referentes.',
+    articulos: [
+      {
+        titulo: 'Slack 📲',
+        md: 'Recursos para dominar Slack:\n\n- [Presentación](https://docs.google.com/presentation/d/1rtnbvH9VvH9gm-F6UEZoiSAmvWODKv-p/edit)\n- [Buenas prácticas y atajos](https://drive.google.com/file/d/1vbrajosTrBSoi1vo3iE3mWFK7qUwi-le/view)\n\nRecuerden reforzar estos conceptos para que todos estemos alineados respecto al uso adecuado de la herramienta 💪🏽',
+        links: [
+          'https://docs.google.com/presentation/d/1rtnbvH9VvH9gm-F6UEZoiSAmvWODKv-p/edit',
+          'https://drive.google.com/file/d/1vbrajosTrBSoi1vo3iE3mWFK7qUwi-le/view'
+        ],
+        linkLabels: ['Ver presentación', 'Buenas prácticas y atajos']
+      },
+      {
+        titulo: 'Jira',
+        md: 'Recursos para dominar Jira:\n\n- [Presentación](https://docs.google.com/presentation/d/1SPmp8usypZk9YmFK73c9ctQGOT9riFb47gXPgoeQAaI/edit)\n\nRecuerden reforzar estos conceptos para que todos estemos alineados 💪🏽',
+        links: ['https://docs.google.com/presentation/d/1SPmp8usypZk9YmFK73c9ctQGOT9riFb47gXPgoeQAaI/edit'],
+        linkLabels: ['Ver presentación']
+      },
+      {
+        titulo: 'Gmail',
+        md: 'Recursos para dominar Gmail:\n\n- [Presentación](https://docs.google.com/presentation/d/113OUu5AZ6s9gKQsysAmqu76MDywIq2HzVALu0bU0mvU/edit)\n- [Buenas prácticas](https://vip2picallex.atlassian.net/wiki/spaces/GS/pages/2514583919/Google+Suite)',
+        links: [
+          'https://docs.google.com/presentation/d/113OUu5AZ6s9gKQsysAmqu76MDywIq2HzVALu0bU0mvU/edit',
+          'https://vip2picallex.atlassian.net/wiki/spaces/GS/pages/2514583919/Google+Suite'
+        ],
+        linkLabels: ['Ver presentación', 'Buenas prácticas']
+      }
+    ]
+  }
+];
+
 let _bibFilter = 'all';
 
-function loadBibDocs() {
-  try { return JSON.parse(localStorage.getItem('pcx_biblioteca') || '[]'); } catch { return []; }
-}
-function saveBibDocs(docs) {
-  try { localStorage.setItem('pcx_biblioteca', JSON.stringify(docs)); } catch {}
+function mdToHtml(md) {
+  return md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/\[([^\]]+)\]\((https?:[^)]+|mailto:[^)]+|\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:var(--c-accent)">$1</a>')
+    .replace(/^> (.+)$/gm,'<blockquote style="border-left:3px solid var(--c-accent);margin:8px 0;padding:6px 14px;background:var(--c-surface-alt);border-radius:0 6px 6px 0;font-style:italic;color:var(--c-text)">$1</blockquote>')
+    .replace(/^- (.+)$/gm,'<li style="margin:3px 0">$1</li>')
+    .replace(/(<li[^>]*>.*<\/li>\n?)+/g,'<ul style="padding-left:20px;margin:8px 0">$&</ul>')
+    .replace(/^#{3} (.+)$/gm,'<h4 style="font-size:14px;font-weight:600;margin:14px 0 4px">$1</h4>')
+    .replace(/^#{2} (.+)$/gm,'<h3 style="font-size:16px;font-weight:600;margin:16px 0 6px">$1</h3>')
+    .replace(/^#{1} (.+)$/gm,'<h2 style="font-size:18px;font-weight:600;margin:18px 0 8px">$1</h2>')
+    .replace(/\n\n/g,'</p><p style="margin:8px 0">')
+    .replace(/^(?!<[hbuol])(.+)$/gm, (m) => m.startsWith('<') ? m : m)
+    .replace(/\n/g,'<br>');
 }
 
 function renderBiblioteca() {
-  const docs = loadBibDocs();
-  const isAdmin = currentUser?.role === 'admin';
-  // map filtered docs keeping original index for deletion
-  const indexed = docs.map((d, i) => ({ ...d, _origIdx: i }));
-  const filtered = _bibFilter === 'all' ? indexed : indexed.filter(d => d.cat === _bibFilter);
+  const cats = _bibFilter === 'all'
+    ? BIBLIOTECA
+    : BIBLIOTECA.filter(c => c.cat === _bibFilter);
+
+  // Build category filter buttons
+  const filtersEl = document.getElementById('bib-cat-filters');
+  if (filtersEl && !filtersEl.dataset.built) {
+    filtersEl.dataset.built = '1';
+    filtersEl.innerHTML = `<button class="equipo-dept-btn active" onclick="filterBib('all',this)">Todos</button>`
+      + BIBLIOTECA.map(c => `<button class="equipo-dept-btn" onclick="filterBib(${JSON.stringify(c.cat)},this)">${c.cat}</button>`).join('');
+  }
+
   const grid = document.getElementById('bib-grid');
   if (!grid) return;
-  if (!filtered.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;color:var(--c-muted);font-size:13px;padding:32px 0 0;text-align:center">
-      ${docs.length ? 'No hay documentos en esta categoría.' : 'Aún no hay documentos cargados.'}
-    </div>`;
-    return;
-  }
-  grid.innerHTML = filtered.map(d => `
-    <div style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:11px;font-weight:600;color:var(--c-accent);text-transform:uppercase;letter-spacing:.5px">${BIB_CAT_LABELS[d.cat] || d.cat}</div>
-      <div style="font-size:14px;font-weight:600;color:var(--c-text)">${d.title}</div>
-      ${d.desc ? `<div style="font-size:12px;color:var(--c-muted);line-height:1.4">${d.desc}</div>` : ''}
-      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-        <a href="${d.url}" target="_blank" rel="noopener" style="font-size:12px;color:var(--c-accent);font-weight:500;text-decoration:none">Ver documento →</a>
-        ${isAdmin ? `<button onclick="deleteBibDoc(${d._origIdx})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--c-muted);font-size:11px;padding:2px 6px;border-radius:4px" title="Eliminar">✕</button>` : ''}
-      </div>
+
+  grid.innerHTML = cats.map(c => c.articulos.map((a, ai) => `
+    <div onclick="openBibArticle(${JSON.stringify(c.cat)},${ai})" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--c-accent)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--c-border)';this.style.transform=''">
+      <div style="font-size:11px;font-weight:600;color:var(--c-accent);text-transform:uppercase;letter-spacing:.5px">${c.cat}</div>
+      <div style="font-size:14px;font-weight:600;color:var(--c-text);line-height:1.3">${a.titulo}</div>
+      ${a.links && a.links.length ? `<div style="font-size:11px;color:var(--c-muted);margin-top:2px">📎 ${a.links.length} recurso${a.links.length>1?'s':''}</div>` : ''}
+      <div style="font-size:12px;color:var(--c-accent);font-weight:500;margin-top:auto">Leer →</div>
     </div>
-  `).join('');
+  `).join('')).join('');
 }
 
 function filterBib(cat, btn) {
   _bibFilter = cat;
   document.querySelectorAll('#bib-cat-filters .equipo-dept-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  renderBiblioteca();
+  const cats = cat === 'all' ? BIBLIOTECA : BIBLIOTECA.filter(c => c.cat === cat);
+  const grid = document.getElementById('bib-grid');
+  if (!grid) return;
+  grid.innerHTML = cats.map(c => c.articulos.map((a, ai) => `
+    <div onclick="openBibArticle(${JSON.stringify(c.cat)},${ai})" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--c-accent)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--c-border)';this.style.transform=''">
+      <div style="font-size:11px;font-weight:600;color:var(--c-accent);text-transform:uppercase;letter-spacing:.5px">${c.cat}</div>
+      <div style="font-size:14px;font-weight:600;color:var(--c-text);line-height:1.3">${a.titulo}</div>
+      ${a.links && a.links.length ? `<div style="font-size:11px;color:var(--c-muted);margin-top:2px">📎 ${a.links.length} recurso${a.links.length>1?'s':''}</div>` : ''}
+      <div style="font-size:12px;color:var(--c-accent);font-weight:500;margin-top:auto">Leer →</div>
+    </div>
+  `).join('')).join('');
 }
 
-function openBibModal() {
-  document.getElementById('bib-title').value = '';
-  document.getElementById('bib-url').value = '';
-  document.getElementById('bib-desc').value = '';
-  document.getElementById('bib-cat').value = 'politicas';
-  document.getElementById('bib-modal-overlay').style.display = 'flex';
+function openBibArticle(catName, artIdx) {
+  const cat = BIBLIOTECA.find(c => c.cat === catName);
+  if (!cat) return;
+  const a = cat.articulos[artIdx];
+  if (!a) return;
+  document.getElementById('bib-art-cat').textContent = catName;
+  document.getElementById('bib-art-title').textContent = a.titulo;
+  let body = `<p style="margin:0 0 8px">${mdToHtml(a.md)}</p>`;
+  if (a.links && a.links.length) {
+    body += '<div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">';
+    a.links.forEach((url, i) => {
+      const label = (a.linkLabels && a.linkLabels[i]) || url;
+      body += `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:var(--c-accent);color:#fff;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;width:fit-content">📎 ${label}</a>`;
+    });
+    body += '</div>';
+  }
+  document.getElementById('bib-art-body').innerHTML = body;
+  document.getElementById('bib-article-overlay').style.display = 'flex';
 }
-function closeBibModal() {
-  document.getElementById('bib-modal-overlay').style.display = 'none';
-}
-function saveBibDoc() {
-  const title = document.getElementById('bib-title')?.value.trim();
-  const url   = document.getElementById('bib-url')?.value.trim();
-  const cat   = document.getElementById('bib-cat')?.value;
-  const desc  = document.getElementById('bib-desc')?.value.trim();
-  if (!title) { showToast('El título es obligatorio', 'error'); return; }
-  if (!url)   { showToast('La URL es obligatoria', 'error'); return; }
-  const docs = loadBibDocs();
-  docs.unshift({ title, url, cat, desc, ts: new Date().toISOString() });
-  saveBibDocs(docs);
-  closeBibModal();
-  renderBiblioteca();
-  showToast('Documento agregado a la Biblioteca', 'success');
-}
-function deleteBibDoc(idx) {
-  const docs = loadBibDocs();
-  docs.splice(idx, 1);
-  saveBibDocs(docs);
-  renderBiblioteca();
+function closeBibArticle() {
+  document.getElementById('bib-article-overlay').style.display = 'none';
 }
 
 function applyAccessControl() {
