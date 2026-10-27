@@ -6517,20 +6517,20 @@ function setDirView(mode, btn) {
   const listWrap = document.getElementById('dir-list-wrapper');
   const orgWrap  = document.getElementById('dir-org-wrapper');
   const advBar   = document.getElementById('adv-filter-bar');
-  grid.classList.add('hidden');
-  listWrap.classList.add('hidden');
-  orgWrap.classList.add('hidden');
+  if (grid) grid.classList.add('hidden');
+  if (listWrap) listWrap.classList.add('hidden');
+  if (orgWrap) orgWrap.classList.add('hidden');
   if (mode === 'cards') {
-    grid.classList.remove('hidden');
-    advBar.style.display = '';
+    if (grid) grid.classList.remove('hidden');
+    if (advBar) advBar.style.display = '';
     renderDirectory(getFilteredEmps());
   } else if (mode === 'list') {
-    listWrap.classList.remove('hidden');
-    advBar.style.display = '';
+    if (listWrap) listWrap.classList.remove('hidden');
+    if (advBar) advBar.style.display = '';
     renderListView(getFilteredEmps());
   } else if (mode === 'org') {
-    orgWrap.classList.remove('hidden');
-    advBar.style.display = 'none';
+    if (orgWrap) orgWrap.classList.remove('hidden');
+    if (advBar) advBar.style.display = 'none';
     renderOrgChart();
   }
 }
