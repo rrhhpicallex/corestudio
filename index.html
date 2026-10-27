@@ -5923,6 +5923,14 @@ async function approveRequest(empId, reqId, e) {
     await window.supabase.from('leave_requests').update({ status: 'aprobado', reviewer: req.reviewer }).eq('id', reqId);
   }
   showToast(`Licencia de ${emp.name} aprobada`, 'success');
+  // Create Google Calendar event (fire-and-forget, don't block approval)
+  fetch('/.netlify/functions/create-calendar-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userEmail: emp.email, leaveType: req.type, fromDate: req.from, toDate: req.to }),
+  }).then(r => r.json()).then(d => {
+    if (d.ok) showToast('📅 Evento creado en Google Calendar', 'success');
+  }).catch(() => {});
   const _fmtA = d => d ? d.split('-').reverse().join('/') : '';
   notifySlack({ type: 'leave_reviewed', recipientEmail: emp.email,
     empName: emp.name, leaveType: req.type,
@@ -8655,11 +8663,14 @@ function renderNovSidebar() {
       ? '<div style="font-size:12px;color:var(--c-muted);padding:6px 0">Nadie está fuera hoy ✓</div>'
       : away.map(e => {
           const req = e.leave_requests.find(r => r.status==='aprobado' && new Date(r.from)<=now && new Date(r.to)>=now);
-          const icon = req?.type === 'Vacaciones' ? '✈️' : req?.type === 'Enfermedad' ? '💊' : '🏖️';
+          const isAdmin = getCurrentUserRole() === 'admin';
+          const sensible = req?.type === 'Enfermedad' || req?.type === 'Maternidad/Paternidad';
+          const displayType = (!isAdmin && sensible) ? 'Ausente' : (req?.type || 'Licencia');
+          const icon = req?.type === 'Vacaciones' ? '✈️' : (req?.type === 'Enfermedad' || req?.type === 'Maternidad/Paternidad') ? (isAdmin ? '💊' : '🌿') : '🏖️';
           return '<div class="nov-widget-item">'
             + '<div class="nov-widget-item-av" style="background:' + e.color + '">' + e.initials + '</div>'
             + '<div><div class="nov-widget-item-name">' + e.name.split(' ').slice(0,2).join(' ') + '</div>'
-            + '<div class="nov-widget-item-sub">' + icon + ' ' + (req?.type || 'Licencia') + '</div></div>'
+            + '<div class="nov-widget-item-sub">' + icon + ' ' + displayType + '</div></div>'
           + '</div>';
         }).join('');
   }
