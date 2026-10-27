@@ -1043,6 +1043,8 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 .bell-dot.hidden { display: none; }
+.leave-menu-item:hover { background: var(--c-surface); }
+#topbar-leave-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
 .notif-panel {
   position: absolute; top: calc(100% + 10px); right: 0;
   width: 340px; background: var(--c-card);
@@ -3257,7 +3259,22 @@ a { color: inherit; text-decoration: none; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" placeholder="Buscar colaborador..." id="global-search" oninput="filterDirectory(this.value)"/>
         </div>
-        <button class="btn-icon" onclick="openLeaveModal()" title="Pedir licencia" style="font-size:18px;line-height:1">🚪</button>
+        <div style="position:relative">
+          <button id="topbar-leave-btn" onclick="toggleLeaveMenu(event)" title="Solicitar ausencia o licencia" style="display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;border:1px solid var(--c-border);background:var(--c-surface);cursor:pointer;font-size:12.5px;font-weight:600;color:var(--c-text);white-space:nowrap;transition:all .15s">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Días libres <strong id="topbar-leave-days" style="color:var(--c-accent)">—</strong>
+          </button>
+          <div id="topbar-leave-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--radius);box-shadow:var(--shadow-md);min-width:200px;z-index:999;overflow:hidden">
+            <div style="padding:8px 14px 6px;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--c-border)">Solicitar ausencia</div>
+            <div onclick="openLeaveModal('Vacaciones');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" class="leave-menu-item">✈️ Vacaciones</div>
+            <div onclick="openLeaveModal('Enfermedad');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" class="leave-menu-item">🤒 Enfermedad</div>
+            <div onclick="openLeaveModal('Extra Day');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" class="leave-menu-item">🏖️ Extra Day</div>
+            <div onclick="openLeaveModal('Cumpleaños');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" class="leave-menu-item">🎂 Cumpleaños</div>
+            <div onclick="openLeaveModal('Mudanza');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" class="leave-menu-item">📦 Mudanza</div>
+            <div onclick="openLeaveModal('Chequeate/Tramitate');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" class="leave-menu-item">🏥 Chequeate / Tramitate</div>
+            <div onclick="openLeaveModal('Maternidad/Paternidad');toggleLeaveMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--c-border)" class="leave-menu-item">👶 Maternidad / Paternidad</div>
+          </div>
+        </div>
         <button class="btn-icon" style="position:relative" onclick="toggleNotifPanel()" title="Notificaciones" id="bell-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span class="bell-dot hidden" id="bell-dot">0</span>
@@ -5411,8 +5428,9 @@ function clearLicFilters() {
    LEAVE MODAL
 ═══════════════════════════════════════════════════ */
 function openLeaveModal(type) {
+  if (!type) type = 'Vacaciones';
   currentLeaveType = type;
-  const emp  = currentEmployee || DB.employees[0];
+  const emp  = currentEmployee || currentUser?.emp || DB.employees[0];
   const b    = emp.leave_balances || {};
   const reqs = emp.leave_requests || [];
   const y    = new Date().getFullYear();
@@ -5795,6 +5813,30 @@ function markNotifRead(id) {
 function clearNotifs() {
   notifsData = notifsData.map(n => ({...n, unread: false}));
   renderNotifs();
+}
+
+// ── Leave quick menu ──────────────────────────────
+let leaveMenuOpen = false;
+function toggleLeaveMenu(e) {
+  if (e) e.stopPropagation();
+  leaveMenuOpen = !leaveMenuOpen;
+  const menu = document.getElementById('topbar-leave-menu');
+  if (menu) menu.style.display = leaveMenuOpen ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#topbar-leave-btn') && !e.target.closest('#topbar-leave-menu')) {
+    leaveMenuOpen = false;
+    const m = document.getElementById('topbar-leave-menu');
+    if (m) m.style.display = 'none';
+  }
+});
+function updateTopbarLeaveDays() {
+  const el = document.getElementById('topbar-leave-days');
+  if (!el || !currentUser?.emp) return;
+  const emp = currentUser.emp;
+  const vb = emp.leave_balances?.vacaciones;
+  const avail = vb ? (vb.available !== undefined ? vb.available : Math.max(0,(vb.total||0)-(vb.used||0)-(vb.pending||0))) : '—';
+  el.textContent = avail !== '—' ? avail + (avail === 1 ? ' día' : ' días') : '—';
 }
 
 let notifOpen = false;
@@ -6817,9 +6859,9 @@ function renderFeedSolicitudes() {
     (e.leave_requests||[]).filter(r => r.status === 'pendiente').map(r => ({...r, emp: e}))
   ).sort((a,b) => b.ts.localeCompare(a.ts)).slice(0, 5);
 
-  // Show/hide sidebar solicitud widget
+  // Sidebar solicitud widget removed per UX request
   const sbWidget = document.getElementById('sidebar-solicit-widget');
-  if (sbWidget) sbWidget.style.display = allPending.length > 0 ? 'block' : 'none';
+  if (sbWidget) sbWidget.style.display = 'none';
   const sbBadge = document.getElementById('feed-pend-count-sb');
   if (sbBadge) sbBadge.textContent = allPending.length;
 
@@ -7091,6 +7133,7 @@ function doLogin() {
   }
 
   currentUser = { emp, role: auth.role };
+  updateTopbarLeaveDays();
 
   // Update sidebar identity
   const sbAv   = document.getElementById('sb-avatar');
