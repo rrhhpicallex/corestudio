@@ -8633,8 +8633,9 @@ function renderNovSidebar() {
   DB.employees.forEach(e => {
     if (!e.dob) return;
     const dob = new Date(e.dob);
-    let next = new Date(now.getFullYear(), dob.getMonth(), dob.getDate());
-    if (next < now) next = new Date(now.getFullYear() + 1, dob.getMonth(), dob.getDate());
+    const dobM = dob.getUTCMonth(), dobD = dob.getUTCDate();
+    let next = new Date(now.getFullYear(), dobM, dobD);
+    if (next < now) next = new Date(now.getFullYear() + 1, dobM, dobD);
     const days = Math.round((next - now) / 86400000);
     if (days <= 30) bdays.push({ emp: e, days, date: next });
   });
@@ -8656,10 +8657,11 @@ function renderNovSidebar() {
   DB.employees.forEach(e => {
     if (!e.hire_date) return;
     const hd = new Date(e.hire_date);
-    let next = new Date(now.getFullYear(), hd.getMonth(), hd.getDate());
-    if (next < now) next = new Date(now.getFullYear() + 1, hd.getMonth(), hd.getDate());
+    const hdM = hd.getUTCMonth(), hdD = hd.getUTCDate();
+    let next = new Date(now.getFullYear(), hdM, hdD);
+    if (next < now) next = new Date(now.getFullYear() + 1, hdM, hdD);
     const days = Math.round((next - now) / 86400000);
-    const yrs = next.getFullYear() - hd.getFullYear();
+    const yrs = next.getFullYear() - hd.getUTCFullYear();
     if (days <= 30 && yrs > 0) anivs.push({ emp: e, days, yrs, date: next });
   });
   anivs.sort((a,b) => a.days - b.days);
