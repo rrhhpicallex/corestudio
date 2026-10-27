@@ -7403,9 +7403,9 @@ function renderBiblioteca() {
   if (!grid) return;
 
   if (_bibOpenCat === null) {
-    // Folder view — one card per category
-    grid.innerHTML = BIBLIOTECA.map(c => `
-      <div onclick="openBibFolder('${c.cat.replace(/'/g,"\\'")}')" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;padding:20px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--c-accent)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.borderColor='var(--c-border)';this.style.transform='';this.style.boxShadow=''">
+    // Folder view — one card per category (use index to avoid emoji encoding issues)
+    grid.innerHTML = BIBLIOTECA.map((c, ci) => `
+      <div onclick="openBibFolder(${ci})" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;padding:20px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--c-accent)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.borderColor='var(--c-border)';this.style.transform='';this.style.boxShadow=''">
         <div style="font-size:30px;flex-shrink:0;line-height:1">${c.cat.split(' ')[0]}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:600;color:var(--c-text);margin-bottom:3px">${c.cat.replace(/^[\S]+ /,'')}</div>
@@ -7416,7 +7416,7 @@ function renderBiblioteca() {
     `).join('');
   } else {
     // Folder open — back button + articles
-    const cat = BIBLIOTECA.find(c => c.cat === _bibOpenCat);
+    const cat = BIBLIOTECA[_bibOpenCat];
     if (!cat) { _bibOpenCat = null; renderBiblioteca(); return; }
     grid.innerHTML = `
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -7424,7 +7424,7 @@ function renderBiblioteca() {
         <span style="font-size:16px;font-weight:600;color:var(--c-text)">${cat.cat}</span>
       </div>
       ${cat.articulos.map((a, ai) => `
-        <div onclick="openBibArticle('${cat.cat.replace(/'/g,"\\'")}',${ai})" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--c-accent)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--c-border)';this.style.transform=''">
+        <div onclick="openBibArticle(${_bibOpenCat},${ai})" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--c-accent)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--c-border)';this.style.transform=''">
           <div style="font-size:14px;font-weight:600;color:var(--c-text);line-height:1.3">${a.titulo}</div>
           ${a.links && a.links.length ? `<div style="font-size:11px;color:var(--c-muted);margin-top:2px">📎 ${a.links.length} recurso${a.links.length>1?'s':''}</div>` : ''}
           <div style="font-size:12px;color:var(--c-accent);font-weight:500;margin-top:auto">Leer →</div>
@@ -7434,17 +7434,17 @@ function renderBiblioteca() {
   }
 }
 
-function openBibFolder(catName) {
-  _bibOpenCat = catName;
+function openBibFolder(catIdx) {
+  _bibOpenCat = catIdx;
   renderBiblioteca();
 }
 
-function openBibArticle(catName, artIdx) {
-  const cat = BIBLIOTECA.find(c => c.cat === catName);
+function openBibArticle(catIdx, artIdx) {
+  const cat = BIBLIOTECA[catIdx];
   if (!cat) return;
   const a = cat.articulos[artIdx];
   if (!a) return;
-  document.getElementById('bib-art-cat').textContent = catName;
+  document.getElementById('bib-art-cat').textContent = cat.cat;
   document.getElementById('bib-art-title').textContent = a.titulo;
   let body = `<p style="margin:0 0 8px">${mdToHtml(a.md)}</p>`;
   if (a.links && a.links.length) {
