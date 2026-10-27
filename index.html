@@ -4971,7 +4971,29 @@ function renderReports(e) {
 }
 
 // ── VACATION BALANCE (LCT Argentina + Picallex policy) ───────
+// Returns the start of the current vacation cycle (Oct 1 of the active period)
+function getPeriodStart() {
+  const now = new Date();
+  const y = now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1;
+  return new Date(y, 9, 1);
+}
+
+// Computes used/pending vacation days from leave_requests for the current period
+function computeVacFromRequests(emp) {
+  const periodStart = getPeriodStart();
+  const reqs = emp.leave_requests || [];
+  const used    = reqs.filter(r => r.type === 'Vacaciones' && r.status === 'aprobado'  && new Date(r.from) >= periodStart).reduce((s, r) => s + (r.days || 0), 0);
+  const pending = reqs.filter(r => r.type === 'Vacaciones' && r.status === 'pendiente' && new Date(r.from) >= periodStart).reduce((s, r) => s + (r.days || 0), 0);
+  return { used, pending };
+}
+
 function calcVacBalance(emp, year) {
+  // Colombia: 15 días hábiles (Ley 186), fixed regardless of seniority
+  if (emp.country === 'Colombia') {
+    const { used, pending } = computeVacFromRequests(emp);
+    return { total: 15, used, pending, available: 15 - used - pending, seniority: null };
+  }
+
   year = year || new Date().getFullYear();
   const hire     = new Date(emp.hire_date);
   const hireYear = hire.getFullYear();
@@ -4985,7 +5007,6 @@ function calcVacBalance(emp, year) {
     return 35;
   }
 
-  // LCT entitlement for the year (seniority at Dec 31)
   const seniority = Math.max(0, Math.floor((dec31 - hire) / MS_YEAR));
   let total;
   if (hireYear === year) {
@@ -5000,13 +5021,9 @@ function calcVacBalance(emp, year) {
     total = lctDays(seniority);
   }
 
-  // Use leave_balances as source of truth for used/available (HR-maintained)
-  const lb  = emp.leave_balances?.vacaciones || {};
-  const used      = lb.used     || 0;
-  const pending   = lb.pending  || 0;
-  const available = lb.available !== undefined ? lb.available : (total - used - pending);
-
-  return { total, used, pending, available, seniority };
+  // Compute used/pending dynamically from leave_requests (source of truth)
+  const { used, pending } = computeVacFromRequests(emp);
+  return { total, used, pending, available: total - used - pending, seniority };
 }
 
 /* Leave tiles */
@@ -5026,7 +5043,7 @@ function renderLeaveTiles(e) {
   }
 
   // Vacation balance (LCT-computed total, leave_balances for used/available)
-  const vacBal = (e.country === 'Argentina' || !e.country) ? calcVacBalance(e) : null;
+  const vacBal = calcVacBalance(e);
 
   const tiles = [
     { key: 'vacaciones',    label: 'Vacaciones',        icon: '✈️',  color: '#1565c0', bg: '#e3f2fd', modalKey: 'Vacaciones' },
@@ -5048,7 +5065,9 @@ function renderLeaveTiles(e) {
       usedNum    = vb.used    || 0;
       pendingNum = vb.pending || 0;
       avail      = vb.available !== undefined ? vb.available : 0;
-      if (vacBal) extraContext = `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacBal.total}d/año · ${vacBal.seniority} año${vacBal.seniority !== 1 ? 's' : ''} antigüedad</div>`;
+      if (vacBal) extraContext = e.country === 'Colombia'
+        ? `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacBal.total}d hábiles/año · Colombia (Ley 186)</div>`
+        : `<div style="font-size:10px;color:var(--c-muted);margin-bottom:4px">${vacBal.total}d/año · ${vacBal.seniority} año${vacBal.seniority !== 1 ? 's' : ''} antigüedad</div>`;
 
     } else if (t.key === 'enfermedad') {
       data       = b.enfermedad || {};
@@ -5450,11 +5469,11 @@ function openLeaveModal(type) {
   let extra = '', singleDay = false;
 
   if (type === 'Vacaciones') {
-    const vb    = (emp.country === 'Argentina' || !emp.country) ? calcVacBalance(emp) : null;
-    const avail = vb ? vb.available : (b.vacaciones?.available ?? 0);
-    const used  = vb ? vb.used      : (b.vacaciones?.used      || 0);
+    const vb    = calcVacBalance(emp);
+    const avail = vb.available;
+    const used  = vb.used;
     col1Label = 'Disponibles'; col1Val = avail;
-    col2Label = `Días LCT ${y}`; col2Val = vb ? vb.total : (b.vacaciones?.days_per_year || 14);
+    col2Label = emp.country === 'Colombia' ? 'Días/año (Col)' : `Días LCT ${y}`; col2Val = vb.total;
     if (avail < 0) extra = `<div class="modal-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Sin saldo disponible — queda a criterio del HR Lead aprobar.</div>`;
 
   } else if (type === 'Enfermedad') {
@@ -5833,10 +5852,9 @@ document.addEventListener('click', e => {
 function updateTopbarLeaveDays() {
   const el = document.getElementById('topbar-leave-days');
   if (!el || !currentUser?.emp) return;
-  const emp = currentUser.emp;
-  const vb = emp.leave_balances?.vacaciones;
-  const avail = vb ? (vb.available !== undefined ? vb.available : Math.max(0,(vb.total||0)-(vb.used||0)-(vb.pending||0))) : '—';
-  el.textContent = avail !== '—' ? avail + (avail === 1 ? ' día' : ' días') : '—';
+  const vb = calcVacBalance(currentUser.emp);
+  const avail = vb ? vb.available : null;
+  el.textContent = avail !== null ? avail + (Math.abs(avail) === 1 ? ' día' : ' días') : '—';
 }
 
 let notifOpen = false;
@@ -5941,9 +5959,13 @@ async function approveRequest(empId, reqId, e) {
   const req = emp.leave_requests.find(r => r.id === reqId);
   if (!req) return;
   req.status = 'aprobado'; req.reviewer = getCurrentUserName();
-  const key = {Vacaciones:'vacaciones',Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type]||'vacaciones';
-  const bal = emp.leave_balances?.[key];
-  if (bal) { bal.used += req.days; bal.pending = Math.max(0, bal.pending - req.days); }
+  // Vacaciones: balance computed dynamically from leave_requests — no manual update needed
+  if (req.type !== 'Vacaciones') {
+    const key = {Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type];
+    const bal = key && emp.leave_balances?.[key];
+    if (bal) { bal.used += req.days; bal.pending = Math.max(0, bal.pending - req.days); }
+  }
+  updateTopbarLeaveDays();
   if (window.supabase) {
     await window.supabase.from('leave_requests').update({ status: 'aprobado', reviewer: req.reviewer }).eq('id', reqId);
   }
@@ -5972,9 +5994,13 @@ async function rejectRequest(empId, reqId, e) {
   const req = emp && emp.leave_requests.find(r => r.id === reqId);
   if (!req) return;
   req.status = 'rechazado'; req.reviewer = getCurrentUserName();
-  const key = {Vacaciones:'vacaciones',Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type]||'vacaciones';
-  const bal = emp.leave_balances?.[key];
-  if (bal) bal.pending = Math.max(0, bal.pending - req.days);
+  // Vacaciones: balance computed dynamically from leave_requests — no manual update needed
+  if (req.type !== 'Vacaciones') {
+    const key = {Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type];
+    const bal = key && emp.leave_balances?.[key];
+    if (bal) bal.pending = Math.max(0, bal.pending - req.days);
+  }
+  updateTopbarLeaveDays();
   if (window.supabase) {
     await window.supabase.from('leave_requests').update({ status: 'rechazado', reviewer: req.reviewer }).eq('id', reqId);
   }
