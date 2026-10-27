@@ -3257,9 +3257,10 @@ a { color: inherit; text-decoration: none; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" placeholder="Buscar colaborador..." id="global-search" oninput="filterDirectory(this.value)"/>
         </div>
+        <button class="btn-icon" onclick="openLeaveModal()" title="Pedir licencia" style="font-size:18px;line-height:1">🚪</button>
         <button class="btn-icon" style="position:relative" onclick="toggleNotifPanel()" title="Notificaciones" id="bell-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span class="bell-dot" id="bell-dot">3</span>
+          <span class="bell-dot hidden" id="bell-dot">0</span>
         </button>
         <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
           <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -3342,7 +3343,7 @@ a { color: inherit; text-decoration: none; }
           <!-- SIDEBAR -->
           <div class="nov-sidebar-col">
             <!-- Solicitudes pendientes (solo si hay) -->
-            <div class="nov-widget" id="sidebar-solicit-widget">
+            <div class="nov-widget" id="sidebar-solicit-widget" style="display:none">
               <div class="nov-widget-title" style="display:flex;align-items:center;justify-content:space-between">
                 <span>📋 Solicitudes pendientes <span class="feed-card-badge" id="feed-pend-count-sb" style="margin-left:4px">0</span></span>
                 <span style="font-size:11px;font-weight:400;color:var(--c-accent-hover);cursor:pointer;white-space:nowrap;margin-left:8px" onclick="openHumanIA()">✨ HumanIA</span>
@@ -5780,13 +5781,7 @@ function applyDirectoryFilters() {
 /* ═══════════════════════════════════════════════════
    NOTIFICATIONS
 ═══════════════════════════════════════════════════ */
-const NOTIFS = [
-  { id:'n1', type:'req', icon:'📋', title:'Rodrigo Paz solicitó vacaciones', body:'20/06 → 25/06 · 4 días', time:'hace 2h', unread:true },
-  { id:'n2', type:'req', icon:'🏥', title:'Candela Lourenco solicitó licencia por enfermedad', body:'Adjuntó certificado médico', time:'hace 5h', unread:true },
-  { id:'n3', type:'req', icon:'⭐', title:'Zoé Natera solicitó Extra Day', body:'Para el 20/06', time:'ayer', unread:true },
-  { id:'n4', type:'appr', icon:'✅', title:'Vacaciones de Natalia Maffini aprobadas', body:'06/01 → 17/01 · 10 días', time:'hace 3d', unread:false },
-  { id:'n5', type:'info', icon:'ℹ️', title:'Recordatorio: Bruno Alaminos cumple antigüedad de 10 años', body:'16/11/2025 · actualizar saldo vacaciones', time:'hace 5d', unread:false },
-];
+const NOTIFS = [];
 
 let notifsData = [...NOTIFS];
 
