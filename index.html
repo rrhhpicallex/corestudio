@@ -5719,6 +5719,108 @@ function fmtDateShort(d) {
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
 /* ═══════════════════════════════════════════════════
+   SUPABASE SYNC — load, save, write-through
+═══════════════════════════════════════════════════ */
+
+// Merges Supabase rows back into the in-memory DB object.
+// Keeps the existing hardcoded data as fallback for fields not yet in Supabase.
+async function loadDBFromSupabase() {
+  if (!window.supabase) return;
+  try {
+    // 1. Fetch all employees
+    const { data: empRows, error: empErr } = await window.supabase
+      .from('employees').select('*');
+    if (empErr) { console.warn('loadDB employees:', empErr.message); }
+
+    // 2. Fetch all leave requests
+    const { data: lrRows, error: lrErr } = await window.supabase
+      .from('leave_requests').select('*').order('created_at', { ascending: false });
+    if (lrErr) { console.warn('loadDB leave_requests:', lrErr.message); }
+
+    if (!empRows || !empRows.length) return; // Supabase empty — use hardcoded DB
+
+    // Build leave_requests map by emp_id
+    const lrByEmp = {};
+    (lrRows || []).forEach(r => {
+      if (!lrByEmp[r.emp_id]) lrByEmp[r.emp_id] = [];
+      lrByEmp[r.emp_id].push({
+        id: r.id, type: r.type,
+        from: r.from_date, to: r.to_date,
+        days: r.days, status: r.status,
+        reviewer: r.reviewer || '—',
+        note: r.note || '',
+        cert_url: r.cert_url || '',
+        ts: r.created_at ? new Date(r.created_at).toLocaleString('es-AR') : '',
+      });
+    });
+
+    // Merge Supabase rows into DB.employees (preserve any local fields not in Supabase)
+    DB.employees = empRows.map(row => {
+      const existing = DB.employees.find(e => e.id === row.id) || {};
+      return {
+        ...existing,
+        id: row.id, name: row.name, initials: row.initials,
+        title: row.title, dept: row.dept, level: row.level,
+        type: row.type, country: row.country, manager_name: row.manager_name,
+        hire_date: row.hire_date, dob: row.dob,
+        email: row.email, phone: row.phone, gender: row.gender,
+        color: row.color, status: row.status, cuil: row.cuil,
+        dni: row.dni, address: row.address, health_insurance: row.health_insurance,
+        hr_notes: row.hr_notes, key_talent: row.key_talent,
+        emergency: row.emergency || existing.emergency || {},
+        direct_reports: row.direct_reports || existing.direct_reports || [],
+        job_history: row.job_history || existing.job_history || [],
+        leave_balances: { ...(existing.leave_balances || {}), ...(row.leave_balances || {}) },
+        leave_requests: lrByEmp[row.id] || existing.leave_requests || [],
+        documents: existing.documents || [],
+        baja_date: row.baja_date, baja_motivo: row.baja_motivo, baja_by: row.baja_by,
+      };
+    });
+
+    DB.employees.sort((a, b) => a.name.localeCompare(b.name));
+    console.log(`[DB] Loaded ${DB.employees.length} employees, ${(lrRows||[]).length} leave requests from Supabase`);
+  } catch (err) {
+    console.warn('loadDBFromSupabase failed, using local data:', err.message);
+  }
+}
+
+// Saves a single employee to Supabase (upsert).
+async function saveEmployeeToSupabase(emp) {
+  if (!window.supabase) return;
+  const lb = { ...(emp.leave_balances || {}) };
+  delete lb.vacaciones; // vacaciones computed from leave_requests
+  const { error } = await window.supabase.from('employees').upsert({
+    id: emp.id, name: emp.name, initials: emp.initials,
+    title: emp.title, dept: emp.dept, level: emp.level,
+    type: emp.type, country: emp.country, manager_name: emp.manager_name,
+    hire_date: emp.hire_date || null, dob: emp.dob || null,
+    email: emp.email, phone: emp.phone, gender: emp.gender,
+    color: emp.color, status: emp.status || 'active', cuil: emp.cuil || null,
+    dni: emp.dni || null, address: emp.address || null,
+    health_insurance: emp.health_insurance || null,
+    hr_notes: emp.hr_notes || null, key_talent: emp.key_talent || false,
+    emergency: emp.emergency || {}, direct_reports: emp.direct_reports || [],
+    job_history: emp.job_history || [], leave_balances: lb,
+    baja_date: emp.baja_date || null, baja_motivo: emp.baja_motivo || null,
+    baja_by: emp.baja_by || null,
+  });
+  if (error) console.warn('saveEmployee:', error.message);
+}
+
+// Saves a new leave request to Supabase.
+async function saveLeaveRequestToSupabase(req, empId) {
+  if (!window.supabase) return;
+  const { error } = await window.supabase.from('leave_requests').upsert({
+    id: req.id, emp_id: empId, type: req.type,
+    from_date: req.from, to_date: req.to || req.from,
+    days: req.days || 1, status: req.status || 'pendiente',
+    reviewer: req.reviewer || null, note: req.note || null,
+    cert_url: req.cert_url || null,
+  });
+  if (error) console.warn('saveLeaveRequest:', error.message);
+}
+
+/* ═══════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -5964,6 +6066,7 @@ async function approveRequest(empId, reqId, e) {
     const key = {Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type];
     const bal = key && emp.leave_balances?.[key];
     if (bal) { bal.used += req.days; bal.pending = Math.max(0, bal.pending - req.days); }
+    saveEmployeeToSupabase(emp); // persist updated leave_balances for non-vacation types
   }
   updateTopbarLeaveDays();
   if (window.supabase) {
@@ -5999,6 +6102,7 @@ async function rejectRequest(empId, reqId, e) {
     const key = {Enfermedad:'enfermedad','Extra Day':'extra_day','Maternidad/Paternidad':'maternidad'}[req.type];
     const bal = key && emp.leave_balances?.[key];
     if (bal) bal.pending = Math.max(0, bal.pending - req.days);
+    saveEmployeeToSupabase(emp);
   }
   updateTopbarLeaveDays();
   if (window.supabase) {
@@ -6708,11 +6812,9 @@ function saveProfile() {
   document.getElementById('ph-level').textContent = currentEmployee.level;
   document.getElementById('ph-type').textContent  = currentEmployee.type;
 
+  saveEmployeeToSupabase(currentEmployee);
   toggleEditMode(false);
   showToast('Perfil actualizado correctamente', 'success');
-
-  // Relay ripple
-  console.log('[HR Studio Relay] Profile updated for', currentEmployee.id, '→ Feedback/Talent/Pulse sync');
 }
 
 /* ═══════════════════════════════════════════════════
@@ -6767,6 +6869,7 @@ function submitNuevoColaborador() {
 
   DB.employees.push(newEmp);
   DB.employees.sort((a,b) => a.name.localeCompare(b.name));
+  saveEmployeeToSupabase(newEmp);
   document.getElementById('nuevo-overlay').classList.remove('open');
   applyDirectoryFilters();
   showToast(`${newEmp.name} creado correctamente`, 'success');
@@ -7614,6 +7717,7 @@ function submitBaja() {
     motivo, baja_by: getCurrentUserName()
   });
 
+  saveEmployeeToSupabase(bajaEmployee);
   closeBajaModal();
   showToast(`${bajaEmployee.name} dado/a de baja correctamente`, 'success');
 
