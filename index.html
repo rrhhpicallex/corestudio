@@ -5755,6 +5755,7 @@ async function loadDBFromSupabase() {
     });
 
     // Merge Supabase rows into DB.employees (preserve any local fields not in Supabase)
+    // Column mapping: termination_date → baja_date, termination_type → baja_motivo
     DB.employees = empRows.map(row => {
       const existing = DB.employees.find(e => e.id === row.id) || {};
       return {
@@ -5764,16 +5765,22 @@ async function loadDBFromSupabase() {
         type: row.type, country: row.country, manager_name: row.manager_name,
         hire_date: row.hire_date, dob: row.dob,
         email: row.email, phone: row.phone, gender: row.gender,
-        color: row.color, status: row.status, cuil: row.cuil,
-        dni: row.dni, address: row.address, health_insurance: row.health_insurance,
+        color: row.color, status: row.status,
+        cuil: row.cuil, dni: row.dni,
+        address: row.address, health_insurance: row.health_insurance,
         hr_notes: row.hr_notes, key_talent: row.key_talent,
-        emergency: row.emergency || existing.emergency || {},
+        company: row.company,
+        manager_email: row.manager_email,
+        probation_end_date: row.probation_end_date, probation_status: row.probation_status,
+        emergency:      row.emergency      || existing.emergency      || {},
         direct_reports: row.direct_reports || existing.direct_reports || [],
-        job_history: row.job_history || existing.job_history || [],
+        job_history:    row.job_history    || existing.job_history    || [],
         leave_balances: { ...(existing.leave_balances || {}), ...(row.leave_balances || {}) },
         leave_requests: lrByEmp[row.id] || existing.leave_requests || [],
         documents: existing.documents || [],
-        baja_date: row.baja_date, baja_motivo: row.baja_motivo, baja_by: row.baja_by,
+        // baja fields — map from Supabase column names
+        baja_date:   row.termination_date || row.baja_date   || null,
+        baja_motivo: row.termination_type || row.baja_motivo || null,
       };
     });
 
@@ -5785,25 +5792,36 @@ async function loadDBFromSupabase() {
 }
 
 // Saves a single employee to Supabase (upsert).
+// Uses the existing Supabase column names (termination_date, termination_type, etc.)
 async function saveEmployeeToSupabase(emp) {
   if (!window.supabase) return;
   const lb = { ...(emp.leave_balances || {}) };
-  delete lb.vacaciones; // vacaciones computed from leave_requests
-  const { error } = await window.supabase.from('employees').upsert({
-    id: emp.id, name: emp.name, initials: emp.initials,
-    title: emp.title, dept: emp.dept, level: emp.level,
-    type: emp.type, country: emp.country, manager_name: emp.manager_name,
+  delete lb.vacaciones; // vacaciones computed dynamically from leave_requests
+  const payload = {
+    id: emp.id, name: emp.name, initials: emp.initials || '',
+    title: emp.title || '', dept: emp.dept || '', level: emp.level || '',
+    type: emp.type || '', country: emp.country || 'Argentina',
+    manager_name: emp.manager_name || '',
     hire_date: emp.hire_date || null, dob: emp.dob || null,
-    email: emp.email, phone: emp.phone, gender: emp.gender,
-    color: emp.color, status: emp.status || 'active', cuil: emp.cuil || null,
-    dni: emp.dni || null, address: emp.address || null,
-    health_insurance: emp.health_insurance || null,
+    email: emp.email || '', phone: emp.phone || '', gender: emp.gender || '',
+    color: emp.color || '#607D8B', status: emp.status || 'active',
+    address: emp.address || null, health_insurance: emp.health_insurance || null,
     hr_notes: emp.hr_notes || null, key_talent: emp.key_talent || false,
-    emergency: emp.emergency || {}, direct_reports: emp.direct_reports || [],
-    job_history: emp.job_history || [], leave_balances: lb,
-    baja_date: emp.baja_date || null, baja_motivo: emp.baja_motivo || null,
-    baja_by: emp.baja_by || null,
-  });
+    company: emp.company || null, manager_email: emp.manager_email || null,
+    // baja fields → Supabase column names
+    termination_date: emp.baja_date   || null,
+    termination_type: emp.baja_motivo || null,
+  };
+  // Add JSONB columns only if they exist in the schema (added via ALTER TABLE)
+  if (emp.emergency      !== undefined) payload.emergency      = emp.emergency || {};
+  if (emp.direct_reports !== undefined) payload.direct_reports = emp.direct_reports || [];
+  if (emp.job_history    !== undefined) payload.job_history    = emp.job_history || [];
+  if (Object.keys(lb).length)          payload.leave_balances  = lb;
+  // Add cuil/dni only if columns exist
+  if (emp.cuil !== undefined) payload.cuil = emp.cuil || null;
+  if (emp.dni  !== undefined) payload.dni  = emp.dni  || null;
+
+  const { error } = await window.supabase.from('employees').upsert(payload);
   if (error) console.warn('saveEmployee:', error.message);
 }
 
