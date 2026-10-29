@@ -2641,6 +2641,25 @@ a { color: inherit; text-decoration: none; }
   transition: transform .12s; box-shadow: 0 2px 8px rgba(92,53,200,0.35);
 }
 .humania-send-btn:hover { transform: scale(1.1); }
+.humania-tabs {
+  display: flex; border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.humania-tab {
+  flex: 1; padding: 8px 10px; font-size: 12px; font-weight: 600;
+  border: none; background: none; cursor: pointer; color: var(--c-muted);
+  transition: all .15s; border-bottom: 2px solid transparent;
+}
+.humania-tab.active { color: #5c35c8; border-bottom-color: #5c35c8; background: var(--c-card); }
+.humania-tab.active.legal { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+.humania-legal-prompts { display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 10px; }
+.humania-legal-prompts button {
+  padding:5px 10px; border-radius:99px;
+  border:1px solid var(--c-border); background:var(--c-surface);
+  font-size:11.5px; font-weight:600; color:var(--c-text-secondary);
+  cursor:pointer; transition:all .13s;
+}
+.humania-legal-prompts button:hover { border-color:var(--c-accent); color:var(--c-accent); background:var(--c-accent-light); }
 
 /* ─── POST ACTIONS (editar / borrar) ───────────────── */
 .nov-post-menu-btn {
@@ -9049,6 +9068,8 @@ function getTimeAgo(isoStr) {
    HUMANIA — BOT FLOTANTE
 ═══════════════════════════════════════════════════ */
 let humaniaOpen = false;
+let humaniaMode = 'data'; // 'data' | 'legal'
+let legalHistory = [];
 
 function openHumanIA() {
   humaniaOpen = true;
@@ -9062,10 +9083,29 @@ function closeHumanIA() {
   document.getElementById('humania-fab').style.display = 'flex';
 }
 
+function switchHumaniaTab(mode) {
+  humaniaMode = mode;
+  document.getElementById('tab-data').classList.toggle('active', mode === 'data');
+  document.getElementById('tab-legal').classList.toggle('active', mode === 'legal');
+  document.getElementById('tab-legal').classList.toggle('legal', mode === 'legal');
+  document.getElementById('humania-prompts').style.display = mode === 'data' ? '' : 'none';
+  document.getElementById('humania-legal-prompts').style.display = mode === 'legal' ? '' : 'none';
+  document.getElementById('humania-panel-name').textContent = mode === 'legal' ? 'Asesor Legal HR' : 'HumanIA';
+  document.getElementById('humania-input').placeholder = mode === 'legal' ? 'Consultá sobre licencias, vacaciones...' : 'Preguntale a HumanIA...';
+  if (mode === 'legal' && legalHistory.length === 0) {
+    document.getElementById('humania-messages').innerHTML = '<div class="humania-msg humania-msg-bot"><div class="humania-msg-bubble">⚖️ Hola! Soy tu Asesor Legal HR. Puedo ayudarte con dudas sobre vacaciones, licencias, Extra Days, maternidad/paternidad y más. ¿En qué te ayudo?</div></div>';
+  }
+}
+
 function askHumanIA(prompt) {
   document.getElementById('humania-input').value = prompt;
-  // Hide quick prompts after first use
   document.getElementById('humania-prompts').style.display = 'none';
+  sendHumanIA();
+}
+
+function askLegalIA(prompt) {
+  document.getElementById('humania-input').value = prompt;
+  document.getElementById('humania-legal-prompts').style.display = 'none';
   sendHumanIA();
 }
 
@@ -9076,53 +9116,54 @@ async function sendHumanIA() {
   input.value = '';
 
   const msgContainer = document.getElementById('humania-messages');
-
-  // Add user message
   msgContainer.innerHTML += '<div class="humania-msg humania-msg-user"><div class="humania-msg-bubble">' + query + '</div></div>';
 
-  // Add thinking indicator
   const thinkId = 'ht_' + Date.now();
   msgContainer.innerHTML += '<div class="humania-msg humania-msg-bot" id="' + thinkId + '"><div class="humania-msg-bubble"><div class="humania-thinking"><span></span><span></span><span></span></div></div></div>';
   msgContainer.scrollTop = msgContainer.scrollHeight;
 
-  // Build context
-  const now = new Date();
-  const pending = DB.employees.flatMap(e => (e.leave_requests||[]).filter(r=>r.status==='pendiente').map(r=>({...r,emp:e})));
-  const bdays = DB.employees.filter(e => {
-    if (!e.dob) return false;
-    const d = new Date(e.dob);
-    return d.getMonth() === now.getMonth();
-  });
-  const deptCount = {};
-  DB.employees.forEach(e => deptCount[e.dept]=(deptCount[e.dept]||0)+1);
-
-  const context = 'Sos HumanIA, asistente de RRHH de PicallEx en Core Studio. Respondé en español rioplatense, conciso y directo. Sin markdown, solo texto plano.\n'
-    + 'Hoy: ' + now.toLocaleDateString('es-AR') + '\n'
-    + 'Equipo: ' + DB.employees.length + ' colaboradores\n'
-    + 'Áreas: ' + Object.entries(deptCount).map(([k,v])=>k+':'+v).join(', ') + '\n'
-    + 'Solicitudes pendientes (' + pending.length + '): ' + pending.map(r=>r.emp.name+' ('+r.type+')').join(', ') + '\n'
-    + 'Cumpleaños este mes: ' + (bdays.map(e=>e.name).join(', ')||'ninguno') + '\n'
-    + 'Colaboradores: ' + DB.employees.map(e=>e.name+' ('+e.dept+', '+e.hire_date+')').join(' | ');
-
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 500,
-        system: context,
-        messages: [{ role: 'user', content: query }]
-      })
-    });
-    const data = await res.json();
-    const text = data?.content?.[0]?.text || 'No pude procesar la consulta. Intentá de nuevo.';
-
+    let res, data, text;
+    if (humaniaMode === 'legal') {
+      // Legal mode — multi-turn via legal-ai function
+      res = await fetch('/.netlify/functions/legal-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: query, history: legalHistory }),
+      });
+      data = await res.json();
+      text = data.answer || 'No pude procesar la consulta. Intentá de nuevo.';
+      // Update history for multi-turn
+      legalHistory.push({ role: 'user', content: query });
+      legalHistory.push({ role: 'assistant', content: text });
+      if (legalHistory.length > 20) legalHistory = legalHistory.slice(-20);
+    } else {
+      // Data mode — HR team data via humania function
+      const now = new Date();
+      const pending = DB.employees.flatMap(e => (e.leave_requests||[]).filter(r=>r.status==='pendiente').map(r=>({...r,emp:e})));
+      const bdays = DB.employees.filter(e => { if (!e.dob) return false; const d=new Date(e.dob); return d.getMonth()===now.getMonth(); });
+      const deptCount = {};
+      DB.employees.forEach(e => deptCount[e.dept]=(deptCount[e.dept]||0)+1);
+      const context = 'Sos HumanIA, asistente de RRHH de PicallEx en Core Studio. Respondé en español rioplatense, conciso y directo. Sin markdown, solo texto plano.\n'
+        + 'Hoy: ' + now.toLocaleDateString('es-AR') + '\n'
+        + 'Equipo: ' + DB.employees.length + ' colaboradores\n'
+        + 'Áreas: ' + Object.entries(deptCount).map(([k,v])=>k+':'+v).join(', ') + '\n'
+        + 'Solicitudes pendientes (' + pending.length + '): ' + pending.map(r=>r.emp.name+' ('+r.type+')').join(', ') + '\n'
+        + 'Cumpleaños este mes: ' + (bdays.map(e=>e.name).join(', ')||'ninguno') + '\n'
+        + 'Colaboradores: ' + DB.employees.map(e=>e.name+' ('+e.dept+', '+e.hire_date+')').join(' | ');
+      res = await fetch('/.netlify/functions/humania', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: query, context }),
+      });
+      data = await res.json();
+      text = data.answer || 'No pude procesar la consulta. Intentá de nuevo.';
+    }
     const thinkEl = document.getElementById(thinkId);
     if (thinkEl) thinkEl.outerHTML = '<div class="humania-msg humania-msg-bot"><div class="humania-msg-bubble">' + text + '</div></div>';
   } catch(e) {
     const thinkEl = document.getElementById(thinkId);
-    if (thinkEl) thinkEl.outerHTML = '<div class="humania-msg humania-msg-bot"><div class="humania-msg-bubble">Error de conexión. Verificá tu conexión e intentá de nuevo.</div></div>';
+    if (thinkEl) thinkEl.outerHTML = '<div class="humania-msg humania-msg-bot"><div class="humania-msg-bubble">Error de conexión. Intentá de nuevo.</div></div>';
   }
   msgContainer.scrollTop = msgContainer.scrollHeight;
 }
@@ -10573,20 +10614,34 @@ function renderPolicyTable() {
           <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3v-2a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
         </svg>
       </div>
-      <span>HumanIA</span>
+      <span id="humania-panel-name">HumanIA</span>
     </div>
     <button class="humania-panel-close" onclick="closeHumanIA()">✕</button>
   </div>
+  <!-- Tabs -->
+  <div class="humania-tabs">
+    <button class="humania-tab active" id="tab-data" onclick="switchHumaniaTab('data')">🤖 Equipo</button>
+    <button class="humania-tab" id="tab-legal" onclick="switchHumaniaTab('legal')">⚖️ Asesor Legal</button>
+  </div>
+  <!-- Messages -->
   <div class="humania-panel-messages" id="humania-messages">
     <div class="humania-msg humania-msg-bot">
       <div class="humania-msg-bubble">Hola, soy HumanIA 👋 Preguntame sobre el equipo, licencias pendientes, cumpleaños o métricas clave.</div>
     </div>
   </div>
+  <!-- Quick prompts — Equipo -->
   <div class="humania-prompts" id="humania-prompts">
     <button onclick="askHumanIA('¿Quién tiene vacaciones pendientes?')">🗓️ Vacaciones pendientes</button>
     <button onclick="askHumanIA('¿Quién cumple años este mes?')">🎂 Cumpleaños del mes</button>
     <button onclick="askHumanIA('¿Cuántos colaboradores por área?')">📊 Distribución áreas</button>
     <button onclick="askHumanIA('¿Quién tiene más de 5 años en PCX?')">⭐ Antigüedad +5 años</button>
+  </div>
+  <!-- Quick prompts — Legal (hidden by default) -->
+  <div class="humania-legal-prompts" id="humania-legal-prompts" style="display:none">
+    <button onclick="askLegalIA('¿Cuántos días de vacaciones me corresponden?')">🏖️ ¿Cuántos días me tocan?</button>
+    <button onclick="askLegalIA('¿Cómo pido vacaciones?')">📋 ¿Cómo pido vacaciones?</button>
+    <button onclick="askLegalIA('¿Qué son los Extra Days y cómo los uso?')">⭐ Extra Days</button>
+    <button onclick="askLegalIA('¿Cuántos días de licencia por enfermedad tengo?')">💊 Licencia por enfermedad</button>
   </div>
   <div class="humania-panel-input">
     <input type="text" id="humania-input" placeholder="Preguntale a HumanIA..." onkeydown="if(event.key==='Enter')sendHumanIA()"/>
